@@ -6,26 +6,28 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2B3B57692F2A30000001626F /* ../App/MainApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57622F2A30000001626F /* ../App/MainApp.swift */; };
+		2B3B576A2F2A30000001626F /* ../App/StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57632F2A30000001626F /* ../App/StatusItemController.swift */; };
+		2B3B576B2F2A30000001626F /* ../Domain/EventTapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57642F2A30000001626F /* ../Domain/EventTapManager.swift */; };
+		2B3B576C2F2A30000001626F /* ../Domain/MetricsAggregator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57652F2A30000001626F /* ../Domain/MetricsAggregator.swift */; };
+		2B3B576D2F2A30000001626F /* ../Domain/UsageSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57662F2A30000001626F /* ../Domain/UsageSample.swift */; };
+		2B3B576E2F2A30000001626F /* ../UI/MetricsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57672F2A30000001626F /* ../UI/MetricsViewModel.swift */; };
+		2B3B576F2F2A30000001626F /* ../UI/DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57682F2A30000001626F /* ../UI/DashboardView.swift */; };
+		2B3B579F2F2A5FCC0001626F /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B579E2F2A5FCC0001626F /* PersistenceController.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		2B3B57542F2A250B0001626F /* ActivityTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ActivityTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2B3B57622F2A30000001626F /* MainApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../App/MainApp.swift"; sourceTree = SOURCE_ROOT; };
-		2B3B57632F2A30000001626F /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../App/StatusItemController.swift"; sourceTree = SOURCE_ROOT; };
-		2B3B57642F2A30000001626F /* EventTapManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Domain/EventTapManager.swift"; sourceTree = SOURCE_ROOT; };
-		2B3B57652F2A30000001626F /* MetricsAggregator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Domain/MetricsAggregator.swift"; sourceTree = SOURCE_ROOT; };
-		2B3B57662F2A30000001626F /* UsageSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Domain/UsageSample.swift"; sourceTree = SOURCE_ROOT; };
-		2B3B57672F2A30000001626F /* MetricsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../UI/MetricsViewModel.swift"; sourceTree = SOURCE_ROOT; };
-		2B3B57682F2A30000001626F /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../UI/DashboardView.swift"; sourceTree = SOURCE_ROOT; };
+		2B3B57622F2A30000001626F /* ../App/MainApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../App/MainApp.swift; sourceTree = SOURCE_ROOT; };
+		2B3B57632F2A30000001626F /* ../App/StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../App/StatusItemController.swift; sourceTree = SOURCE_ROOT; };
+		2B3B57642F2A30000001626F /* ../Domain/EventTapManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Domain/EventTapManager.swift; sourceTree = SOURCE_ROOT; };
+		2B3B57652F2A30000001626F /* ../Domain/MetricsAggregator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Domain/MetricsAggregator.swift; sourceTree = SOURCE_ROOT; };
+		2B3B57662F2A30000001626F /* ../Domain/UsageSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Domain/UsageSample.swift; sourceTree = SOURCE_ROOT; };
+		2B3B57672F2A30000001626F /* ../UI/MetricsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../UI/MetricsViewModel.swift; sourceTree = SOURCE_ROOT; };
+		2B3B57682F2A30000001626F /* ../UI/DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../UI/DashboardView.swift; sourceTree = SOURCE_ROOT; };
+		2B3B579E2F2A5FCC0001626F /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXBuildFile section */
-		2B3B57692F2A30000001626F /* MainApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57622F2A30000001626F /* MainApp.swift */; };
-		2B3B576A2F2A30000001626F /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57632F2A30000001626F /* StatusItemController.swift */; };
-		2B3B576B2F2A30000001626F /* EventTapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57642F2A30000001626F /* EventTapManager.swift */; };
-		2B3B576C2F2A30000001626F /* MetricsAggregator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57652F2A30000001626F /* MetricsAggregator.swift */; };
-		2B3B576D2F2A30000001626F /* UsageSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57662F2A30000001626F /* UsageSample.swift */; };
-		2B3B576E2F2A30000001626F /* MetricsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57672F2A30000001626F /* MetricsViewModel.swift */; };
-		2B3B576F2F2A30000001626F /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3B57682F2A30000001626F /* DashboardView.swift */; };
-/* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2B3B57562F2A250B0001626F /* ActivityTracker */ = {
@@ -66,13 +68,14 @@
 		2B3B57702F2A30000001626F /* TrackerCore */ = {
 			isa = PBXGroup;
 			children = (
-				2B3B57622F2A30000001626F /* MainApp.swift */,
-				2B3B57632F2A30000001626F /* StatusItemController.swift */,
-				2B3B57642F2A30000001626F /* EventTapManager.swift */,
-				2B3B57652F2A30000001626F /* MetricsAggregator.swift */,
-				2B3B57662F2A30000001626F /* UsageSample.swift */,
-				2B3B57672F2A30000001626F /* MetricsViewModel.swift */,
-				2B3B57682F2A30000001626F /* DashboardView.swift */,
+				2B3B57622F2A30000001626F /* ../App/MainApp.swift */,
+				2B3B57632F2A30000001626F /* ../App/StatusItemController.swift */,
+				2B3B57642F2A30000001626F /* ../Domain/EventTapManager.swift */,
+				2B3B57652F2A30000001626F /* ../Domain/MetricsAggregator.swift */,
+				2B3B57662F2A30000001626F /* ../Domain/UsageSample.swift */,
+				2B3B57672F2A30000001626F /* ../UI/MetricsViewModel.swift */,
+				2B3B57682F2A30000001626F /* ../UI/DashboardView.swift */,
+				2B3B579E2F2A5FCC0001626F /* PersistenceController.swift */,
 			);
 			name = TrackerCore;
 			sourceTree = "<group>";
@@ -151,13 +154,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2B3B57692F2A30000001626F /* MainApp.swift in Sources */,
-				2B3B576A2F2A30000001626F /* StatusItemController.swift in Sources */,
-				2B3B576B2F2A30000001626F /* EventTapManager.swift in Sources */,
-				2B3B576C2F2A30000001626F /* MetricsAggregator.swift in Sources */,
-				2B3B576D2F2A30000001626F /* UsageSample.swift in Sources */,
-				2B3B576E2F2A30000001626F /* MetricsViewModel.swift in Sources */,
-				2B3B576F2F2A30000001626F /* DashboardView.swift in Sources */,
+				2B3B57692F2A30000001626F /* ../App/MainApp.swift in Sources */,
+				2B3B576A2F2A30000001626F /* ../App/StatusItemController.swift in Sources */,
+				2B3B576B2F2A30000001626F /* ../Domain/EventTapManager.swift in Sources */,
+				2B3B576C2F2A30000001626F /* ../Domain/MetricsAggregator.swift in Sources */,
+				2B3B576D2F2A30000001626F /* ../Domain/UsageSample.swift in Sources */,
+				2B3B576E2F2A30000001626F /* ../UI/MetricsViewModel.swift in Sources */,
+				2B3B576F2F2A30000001626F /* ../UI/DashboardView.swift in Sources */,
+				2B3B579F2F2A5FCC0001626F /* PersistenceController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

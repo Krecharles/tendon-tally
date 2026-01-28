@@ -123,7 +123,8 @@ final class EventTapManager {
         // If the event tap is disabled by the system (e.g. permissions changed), notify the UI.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             DispatchQueue.main.async { [weak self] in
-                self?.onPermissionOrTapFailure?("Event tap disabled by the system. Re-enable Accessibility / Input Monitoring permissions.")
+                // Keep this message short; detailed instructions are shown in the UI banner.
+                self?.onPermissionOrTapFailure?("Event tap disabled by the system.")
             }
             // Re-enable the tap if possible.
             if let tap = eventTap {
@@ -142,13 +143,12 @@ final class EventTapManager {
                 self._snapshot.mouseClickCount += 1
 
             case .scrollWheel:
+                // Only count scroll ticks; ignore pixel-based distance.
                 let deltaY = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
-                let pixelDeltaY = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
                 let magnitude = abs(deltaY)
                 if magnitude > 0 {
                     self._snapshot.scrollTicks += Int(magnitude)
                 }
-                self._snapshot.scrollDistance += Double(abs(pixelDeltaY))
 
             case .mouseMoved, .leftMouseDragged, .rightMouseDragged:
                 let location = event.location

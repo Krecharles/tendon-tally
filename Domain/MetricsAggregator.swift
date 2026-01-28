@@ -3,6 +3,7 @@ import Foundation
 /// Aggregates raw activity counts into fixed 5‑minute UsageSample windows.
 final class MetricsAggregator {
     private let eventTapManager = EventTapManager()
+    private let persistence = PersistenceController.shared
 
     private let windowLength: TimeInterval = 5 * 60
     private var windowStart: Date = Date()
@@ -22,6 +23,11 @@ final class MetricsAggregator {
     }
 
     init(now: Date = Date()) {
+        // Load persisted history (finalized 5‑minute windows).
+        let stored = persistence.loadSamples()
+        // Keep newest first for convenience.
+        self.history = stored.sorted { $0.start > $1.start }
+
         let end = now.addingTimeInterval(windowLength)
         currentSample = UsageSample(
             id: UUID(),
@@ -46,6 +52,8 @@ final class MetricsAggregator {
         timer?.invalidate()
         timer = nil
         eventTapManager.stop()
+        // Persist any history accumulated during this run.
+        persistence.saveSamples(history)
     }
 
     // MARK: - Timer & Windowing
@@ -72,6 +80,7 @@ final class MetricsAggregator {
         refreshCurrentSample(end: now)
 
         history.insert(currentSample, at: 0)
+        persistence.saveSamples(history)
 
         // Start a new window.
         windowStart = now

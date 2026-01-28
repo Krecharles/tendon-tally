@@ -13,26 +13,20 @@ struct DashboardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            header
+            todayHeader
+            todayTotalsSection
             permissionBannerIfNeeded
-            currentWindowSection
-            Divider()
-            historySection
-            Spacer()
             footerHint
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var header: some View {
+    private var todayHeader: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Last 5 Minutes")
+                Text("Today")
                     .font(.headline)
-                Text("Time left in window: \(timeRemainingDescription)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
             Spacer()
         }
@@ -44,10 +38,11 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Permissions Required")
                     .font(.subheadline).bold()
-                Text(message)
-                    .font(.caption)
-                Text("Go to System Settings → Privacy & Security → Accessibility / Input Monitoring and enable this app.")
+                Text("\(message) Open System Settings → Privacy & Security → Accessibility / Input Monitoring and enable this app.")
                     .font(.caption2)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(8)
             .background(Color.red.opacity(0.08))
@@ -57,19 +52,15 @@ struct DashboardView: View {
         }
     }
 
-    private var currentWindowSection: some View {
+    private var todayTotalsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                metricTile(title: "Keys", value: viewModel.currentSample.keyPressCount)
-                metricTile(title: "Clicks", value: viewModel.currentSample.mouseClickCount)
+                metricTile(title: "Keys", value: viewModel.todayTotals.keyPressCount)
+                metricTile(title: "Clicks", value: viewModel.todayTotals.mouseClickCount)
             }
             HStack {
-                metricTile(title: "Scroll ticks", value: viewModel.currentSample.scrollTicks)
-                metricTile(title: "Scroll px", value: Int(viewModel.currentSample.scrollDistance))
-            }
-            HStack {
-                metricTile(title: "Mouse px", value: Int(viewModel.currentSample.mouseDistance))
-                Spacer()
+                metricTile(title: "Scroll kTicks", value: viewModel.todayTotals.scrollTicks / 1_000)
+                metricTile(title: "Mouse kPx", value: Int(viewModel.todayTotals.mouseDistance / 1_000))
             }
         }
     }
@@ -87,47 +78,13 @@ struct DashboardView: View {
         .cornerRadius(8)
     }
 
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Recent Windows")
-                .font(.subheadline)
-            if viewModel.recentHistory.isEmpty {
-                Text("History will appear here as you keep using your Mac.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } else {
-                ScrollView {
-                    VStack(spacing: 6) {
-                        ForEach(viewModel.recentHistory) { sample in
-                            historyRow(sample)
-                        }
-                    }
-                }
-                .frame(maxHeight: 160)
-            }
-        }
-    }
-
-    private func historyRow(_ sample: UsageSample) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(sample.start, style: .time)
-                    .font(.caption).bold()
-                Text("Keys \(sample.keyPressCount) • Clicks \(sample.mouseClickCount) • Scroll \(sample.scrollTicks)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-        }
-        .padding(6)
-        .background(Color.gray.opacity(0.04))
-        .cornerRadius(6)
-    }
-
     private var footerHint: some View {
-        Text("Data stays on your Mac. Only counts and distances are stored, never which keys you press.")
-            .font(.caption2)
-            .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Data stays on your Mac.")
+            Text("Only counts and distances are stored, never which keys.")
+        }
+        .font(.caption2)
+        .foregroundColor(.secondary)
     }
 }
 
