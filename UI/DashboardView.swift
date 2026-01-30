@@ -16,6 +16,7 @@ struct DashboardView: View {
             todayHeader
             todayTotalsSection
             permissionBannerIfNeeded
+            Spacer()
             footerHint
         }
         .padding(12)
@@ -87,4 +88,3 @@ struct DashboardView: View {
         .foregroundColor(.secondary)
     }
 }
-

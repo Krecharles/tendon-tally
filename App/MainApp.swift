@@ -5,24 +5,40 @@ import AppKit
 struct ActivityTrackerApp: App {
     /// Shared app delegate to manage NSStatusItem and AppKit integration.
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var appState = AppState.shared
 
-    /// Root SwiftUI scene. We keep the main window hidden and primarily use a menu bar popover.
+    /// Root SwiftUI scene. Main window shows the full dashboard with tabs and filters.
     var body: some Scene {
-        // A minimal, hidden window scene that can be used later for a full dashboard window if desired.
         WindowGroup {
-            EmptyView()
+            if let viewModel = appState.viewModel {
+                FullDashboardView(viewModel: viewModel)
+            } else {
+                ProgressView("Loading...")
+                    .frame(width: 200, height: 200)
+            }
         }
-        .windowStyle(.hiddenTitleBar)
+        .windowStyle(.automatic)
+        .defaultSize(width: 600, height: 500)
     }
 }
 
 /// AppKit delegate responsible for setting up the status bar item and popover.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItemController: StatusItemController?
+    private var aggregator: MetricsAggregator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Apply dock visibility setting on launch
+        let settingsManager = SettingsManager.shared
+        let showInDock = settingsManager.getShowInDock()
+        settingsManager.setShowInDock(showInDock) // This applies the setting
+        
         let aggregator = MetricsAggregator()
+        self.aggregator = aggregator
         let viewModel = MetricsViewModel(aggregator: aggregator)
+        
+        // Share viewModel with the main window
+        AppState.shared.setViewModel(viewModel)
 
         statusItemController = StatusItemController(viewModel: viewModel)
         statusItemController?.setupStatusItem()
@@ -32,6 +48,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Stop aggregator (this will save current sample)
+        aggregator?.stop()
         statusItemController?.tearDown()
     }
 }
