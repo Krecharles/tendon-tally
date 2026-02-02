@@ -1,7 +1,10 @@
 import Foundation
 import os.log
 
-/// Aggregates raw activity counts into fixed 5‑minute UsageSample windows.
+/// Aggregates raw activity counts from EventTapManager into fixed 5-minute UsageSample windows.
+///
+/// This class manages the rolling window system, periodically finalizing completed windows
+/// and starting new ones. It also handles persistence of historical data.
 final class MetricsAggregator {
     private let eventTapManager = EventTapManager()
     private let persistence = PersistenceController.shared

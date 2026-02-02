@@ -11,4 +11,3 @@ struct UsageSample: Identifiable, Codable {
     let scrollDistance: Double
     let mouseDistance: Double
 }
-

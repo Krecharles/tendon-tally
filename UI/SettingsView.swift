@@ -15,32 +15,39 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Settings")
-                .font(.headline)
-                .padding(.bottom, 4)
-            
-            VStack(alignment: .leading, spacing: 16) {
-                // Launch at Login
-                Toggle("Open at Login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { _, newValue in
-                        settingsManager.setLaunchAtLogin(newValue)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Settings")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text("Configure your app preferences")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
                 
-                // Show in Dock
-                Toggle("Show in Dock", isOn: $showInDock)
-                    .onChange(of: showInDock) { _, newValue in
-                        settingsManager.setShowInDock(newValue)
-                    }
-            }
-            
-            Divider()
-            
-            // Data Management
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Data Management")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 20) {
+                    // Launch at Login
+                    Toggle("Open at Login", isOn: $launchAtLogin)
+                        .onChange(of: launchAtLogin) { _, newValue in
+                            settingsManager.setLaunchAtLogin(newValue)
+                        }
+                    
+                    // Show in Dock
+                    Toggle("Show in Dock", isOn: $showInDock)
+                        .onChange(of: showInDock) { _, newValue in
+                            settingsManager.setShowInDock(newValue)
+                        }
+                }
+                
+                Divider()
+                
+                // Data Management
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Data Management")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
                 
                 HStack(spacing: 8) {
                     Button(action: {
@@ -76,11 +83,10 @@ struct SettingsView: View {
                 Text("Test data includes 5-minute intervals for the last 4 days")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                }
             }
-            
-            Spacer()
+            .padding(24)
         }
-        .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

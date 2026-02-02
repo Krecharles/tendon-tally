@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import ServiceManagement
 
+/// Manages application settings including launch at login and dock visibility preferences.
 final class SettingsManager {
     static let shared = SettingsManager()
     

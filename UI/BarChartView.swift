@@ -180,7 +180,7 @@ struct BarChartView: View {
     
     private var timeUnit: Calendar.Component {
         switch timeFrame {
-        case .last24Hours:
+        case .today:
             return .hour
         case .lastWeek, .lastMonth:
             return .day
@@ -189,7 +189,7 @@ struct BarChartView: View {
     
     private var strideComponent: Calendar.Component {
         switch timeFrame {
-        case .last24Hours:
+        case .today:
             return .hour
         case .lastWeek, .lastMonth:
             return .day
@@ -198,7 +198,7 @@ struct BarChartView: View {
     
     private var strideCount: Int {
         switch timeFrame {
-        case .last24Hours:
+        case .today:
             return 2 // Data is grouped in 2-hour intervals
         case .lastWeek:
             return 1
@@ -209,7 +209,7 @@ struct BarChartView: View {
     
     private var dateFormat: Date.FormatStyle {
         switch timeFrame {
-        case .last24Hours:
+        case .today:
             return .dateTime.hour().minute()
         case .lastWeek, .lastMonth:
             return .dateTime.month().day()

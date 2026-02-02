@@ -17,8 +17,9 @@ struct ActivityTrackerApp: App {
                     .frame(width: 200, height: 200)
             }
         }
-        .windowStyle(.automatic)
-        .defaultSize(width: 600, height: 500)
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact)
+        .defaultSize(width: 800, height: 600)
     }
 }
 

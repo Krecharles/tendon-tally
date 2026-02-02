@@ -2,16 +2,11 @@ import Foundation
 import Cocoa
 import CoreGraphics
 
-/// Simple value-type snapshot of the raw counts coming from the event tap.
-struct RawActivitySnapshot {
-    var keyPressCount: Int = 0
-    var mouseClickCount: Int = 0
-    var scrollTicks: Int = 0
-    var scrollDistance: Double = 0
-    var mouseDistance: Double = 0
-}
-
 /// Manages a global CGEvent tap and updates a RawActivitySnapshot as events arrive.
+/// 
+/// This class monitors keyboard and mouse events system-wide using CoreGraphics event taps.
+/// It tracks key presses, mouse clicks, scroll events, and mouse movement distance.
+/// All tracking is passive (listen-only) and does not record key contents, only counts.
 /// Inspired by OctoMouse's use of CGEventTap to track keyboard and mouse activity:
 /// https://github.com/KonsomeJona/OctoMouse
 final class EventTapManager {

@@ -1,7 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// Manages the NSStatusItem and the SwiftUI-based popover content.
+/// Manages the menu bar status item and the SwiftUI-based popover dashboard.
+///
+/// This controller handles the creation and lifecycle of the NSStatusItem that appears
+/// in the macOS menu bar, and manages the popover that displays the compact dashboard view.
 final class StatusItemController {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()

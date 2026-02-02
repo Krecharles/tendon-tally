@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct DashboardView: View {
     @ObservedObject var viewModel: MetricsViewModel
@@ -17,6 +18,7 @@ struct DashboardView: View {
             todayTotalsSection
             permissionBannerIfNeeded
             Spacer()
+            openDashboardButton
             footerHint
         }
         .padding(12)
@@ -30,6 +32,46 @@ struct DashboardView: View {
                     .font(.headline)
             }
             Spacer()
+        }
+    }
+    
+    private var openDashboardButton: some View {
+        Button(action: openDashboard) {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 12))
+                Text("Open Dashboard")
+                    .font(.subheadline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Color.accentColor)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func openDashboard() {
+        // Activate the application
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        
+        // Find and show the main window
+        // Look for any visible window first, then any window
+        if let window = NSApplication.shared.windows.first(where: { $0.isVisible }) {
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+        } else if let window = NSApplication.shared.windows.first {
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+        } else {
+            // If no window exists, trigger SwiftUI to create one
+            // This works by activating the app, which should cause WindowGroup to create a window
+            DispatchQueue.main.async {
+                if let window = NSApplication.shared.windows.first {
+                    window.makeKeyAndOrderFront(nil)
+                }
+            }
         }
     }
 
@@ -62,6 +104,13 @@ struct DashboardView: View {
             HStack {
                 metricTile(title: "Scroll kTicks", value: viewModel.todayTotals.scrollTicks / 1_000)
                 metricTile(title: "Mouse kPx", value: Int(viewModel.todayTotals.mouseDistance / 1_000))
+            }
+            HStack {
+                let total = viewModel.todayTotals.keyPressCount +
+                           viewModel.todayTotals.mouseClickCount +
+                           viewModel.todayTotals.scrollTicks / 1_000 +
+                           Int(viewModel.todayTotals.mouseDistance / 1_000)
+                metricTile(title: "Total", value: total)
             }
         }
     }

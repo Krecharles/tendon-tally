@@ -1,6 +1,10 @@
 import Foundation
 import Combine
 
+/// Shared application state that holds the main view model.
+///
+/// This singleton provides a way for the AppDelegate to share the MetricsViewModel
+/// with the main window's WindowGroup.
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()

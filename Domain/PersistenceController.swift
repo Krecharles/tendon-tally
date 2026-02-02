@@ -1,8 +1,10 @@
 import Foundation
 import os.log
 
-/// Very small JSON-backed persistence layer for finalized 5‑minute usage windows.
-/// This keeps all `UsageSample` windows so we can build daily/weekly analytics later.
+/// JSON-backed persistence layer for storing usage samples.
+///
+/// This controller manages saving and loading of finalized 5-minute usage windows
+/// and the current in-progress sample. Data is stored in the user's Application Support directory.
 final class PersistenceController {
     static let shared = PersistenceController()
     

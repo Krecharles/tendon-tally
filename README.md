@@ -11,16 +11,41 @@ Activity is tracked in **rolling 5‑minute windows**, and a simple **dashboard*
 
 ### Project layout
 
-- `App/` – SwiftUI `@main` app and `NSStatusItem`/popover wiring.
-- `Domain/` – `EventTapManager`, `MetricsAggregator`, and `UsageSample` model.
-- `UI/` – SwiftUI `DashboardView` and `MetricsViewModel`.
+- `App/` – SwiftUI `@main` app entry point, `NSStatusItem`/popover wiring, and shared app state.
+- `Domain/` – Core business logic: `EventTapManager` (event monitoring), `MetricsAggregator` (rolling windows), `PersistenceController` (data storage), `SettingsManager` (user preferences), and `TimeSeriesCalculator` (chart data).
+- `Models/` – Shared data types: `UsageSample`, `RawActivitySnapshot`, `MetricTypes` (TimeFrame, MetricType, AggregatedMetrics, TimeSeriesDataPoint).
+- `UI/` – SwiftUI views: `DashboardView` (popover), `FullDashboardView` (main window), `SettingsView`, `BarChartView`, and `MetricsViewModel`.
 
-To use this in Xcode:
+### Running with Swift Package Manager (SweetPad/Command Line)
 
-1. Create a new **macOS App** project in Xcode using **SwiftUI App** lifecycle.
-2. Add the `App`, `Domain`, and `UI` folders from this repository into the project (as groups with “Create folder references” or “Create groups”, as you prefer).
-3. Ensure the **deployment target** is macOS 13 or later for SF Symbols and SwiftUI features.
-4. Build & run. The app will appear as a **menu bar icon** and open the dashboard popover on click.
+This project is configured to work with Swift Package Manager, so you can build and run it from the command line without opening Xcode:
+
+**Quick start:**
+```bash
+# Build the project
+swift build
+
+# Run the app
+swift run ActivityTracker
+
+# Or use the convenience script
+./run.sh
+```
+
+**Requirements:**
+- macOS 14.0 or later
+- Swift 5.9 or later
+- Xcode Command Line Tools installed
+
+The app will appear as a **menu bar icon** and open the dashboard popover on click.
+
+### Running with Xcode
+
+If you prefer to use Xcode:
+
+1. Open `ActivityTracker/ActivityTracker.xcodeproj` in Xcode.
+2. Ensure the **deployment target** is macOS 14.0 or later.
+3. Build & run. The app will appear as a **menu bar icon** and open the dashboard popover on click.
 
 ### Privacy
 
