@@ -6,6 +6,7 @@ struct ChartDataPoint: Identifiable {
     let time: Date
     let metricType: MetricType
     let value: Double
+    let isPartial: Bool
 }
 
 struct BarChartView: View {
@@ -69,7 +70,8 @@ struct BarChartView: View {
                 data.append(ChartDataPoint(
                     time: point.time,
                     metricType: metricType,
-                    value: value(for: point, metricType: metricType)
+                    value: value(for: point, metricType: metricType),
+                    isPartial: point.isPartial
                 ))
             }
             
@@ -78,7 +80,8 @@ struct BarChartView: View {
                 data.append(ChartDataPoint(
                     time: point.time,
                     metricType: .aggregate,
-                    value: aggregateValue(for: point)
+                    value: aggregateValue(for: point),
+                    isPartial: point.isPartial
                 ))
             }
         }
@@ -115,16 +118,20 @@ struct BarChartView: View {
                     )
                     .foregroundStyle(by: .value("Metric", dataPoint.metricType.rawValue))
                     .position(by: .value("Metric", dataPoint.metricType.rawValue))
+                    .opacity(dataPoint.isPartial ? 0.7 : 1.0)
                 }
                 .chartForegroundStyleScale(domain: chartLegendItems, range: chartColors)
+                .chartLegend(.hidden)
                 .chartXAxis {
                     AxisMarks(values: .stride(by: strideComponent, count: strideCount)) { value in
                         AxisGridLine()
                         AxisTick()
                         if let date = value.as(Date.self) {
                             AxisValueLabel {
-                                Text(date, format: dateFormat)
+                                Text(formatHourLabel(date))
                                     .font(.caption2)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
                             }
                         }
                     }
@@ -144,14 +151,14 @@ struct BarChartView: View {
                         }
                     }
                 }
-                .chartLegend {
-                    LegendView(activeMetrics: activeMetrics, showAggregate: showAggregate, color: color)
-                }
                 .frame(maxWidth: .infinity, minHeight: 300, idealHeight: 350)
                 .padding(.vertical, 8)
             }
         }
-        .padding(12)
+        .padding(.top, 12)
+        .padding(.leading, 12)
+        .padding(.trailing, 12)
+        .padding(.bottom, 12)
         .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
     }
@@ -199,7 +206,7 @@ struct BarChartView: View {
     private var strideCount: Int {
         switch timeFrame {
         case .today:
-            return 2 // Data is grouped in 2-hour intervals
+            return 1 // Data is grouped in 1-hour intervals
         case .lastWeek:
             return 1
         case .lastMonth:
@@ -213,6 +220,19 @@ struct BarChartView: View {
             return .dateTime.hour().minute()
         case .lastWeek, .lastMonth:
             return .dateTime.month().day()
+        }
+    }
+    
+    private func formatHourLabel(_ date: Date) -> String {
+        switch timeFrame {
+        case .today:
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH"
+            return formatter.string(from: date)
+        case .lastWeek, .lastMonth:
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
         }
     }
 }

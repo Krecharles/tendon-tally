@@ -32,13 +32,13 @@ struct TimeSeriesCalculator {
         let calendar = Calendar.current
         
         // Determine grouping interval based on time frame
-        // Target ~12 bars for better readability
+        // Always use 1-hour intervals for today view, daily for weeks, 2-day for months
         let (component, value): (Calendar.Component, Int)
         switch timeFrame {
         case .today:
-            // Today / 12 bars = 2-hour intervals
+            // Always use 1-hour intervals (24 bars for full day, fewer for incomplete day)
             component = .hour
-            value = 2
+            value = 1
         case .lastWeek:
             // 7 days = daily intervals
             component = .day
@@ -52,9 +52,22 @@ struct TimeSeriesCalculator {
         // Create time buckets - for current period (offset 0), include current time
         // For past periods, use the end date of that period
         let effectiveEndDate = offset == 0 ? max(endDate, now) : endDate
-        var buckets: [Date: (keys: Int, clicks: Int, scroll: Int, mouse: Double)] = [:]
         
-        // Only calculate current bucket key for offset 0 (current period)
+        // Round start date down to the interval boundary
+        let roundedStartDate: Date
+        if component == .hour {
+            let hour = calendar.component(.hour, from: startDate)
+            let roundedHour = (hour / value) * value
+            roundedStartDate = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: startDate) ?? startDate
+        } else {
+            roundedStartDate = calendar.startOfDay(for: startDate)
+        }
+        
+        // Generate ALL buckets in the range to ensure no gaps
+        var buckets: [Date: (keys: Int, clicks: Int, scroll: Int, mouse: Double, isPartial: Bool)] = [:]
+        var currentBucket = roundedStartDate
+        
+        // Determine the current/incomplete bucket for offset 0
         let currentBucketKey: Date?
         if offset == 0 {
             if component == .hour {
@@ -62,46 +75,43 @@ struct TimeSeriesCalculator {
                 let roundedHour = (hour / value) * value
                 currentBucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: now) ?? now
             } else {
-                let daysSinceStart = calendar.dateComponents([.day], from: startDate, to: now).day ?? 0
+                // For days: calculate days since rounded start and round
+                let daysSinceStart = calendar.dateComponents([.day], from: roundedStartDate, to: now).day ?? 0
                 let roundedDays = (daysSinceStart / value) * value
-                let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: startDate) ?? now
+                let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: roundedStartDate) ?? now
                 currentBucketKey = calendar.startOfDay(for: roundedDate)
             }
         } else {
             currentBucketKey = nil
         }
         
-        // Ensure current bucket exists only for current period
-        if let currentBucketKey = currentBucketKey {
-            buckets[currentBucketKey] = (0, 0, 0, 0.0)
-        }
-        
-        // Create buckets from start to end date
-        let bucketEndDate = offset == 0 ? max(endDate, now) : endDate
-        var current = startDate
-        while current <= bucketEndDate {
+        // Generate all buckets from start to end
+        while currentBucket <= effectiveEndDate {
             let bucketKey: Date
             if component == .hour {
-                // Round down to the hour (or multiple hours)
-                let hour = calendar.component(.hour, from: current)
+                // Round down to the hour boundary
+                let hour = calendar.component(.hour, from: currentBucket)
                 let roundedHour = (hour / value) * value
-                bucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: current) ?? current
+                bucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: currentBucket) ?? currentBucket
             } else {
                 // For days: calculate days since start and round
-                let daysSinceStart = calendar.dateComponents([.day], from: startDate, to: current).day ?? 0
+                let daysSinceStart = calendar.dateComponents([.day], from: roundedStartDate, to: currentBucket).day ?? 0
                 let roundedDays = (daysSinceStart / value) * value
-                let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: startDate) ?? current
-                // Round to start of that day
+                let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: roundedStartDate) ?? currentBucket
                 bucketKey = calendar.startOfDay(for: roundedDate)
             }
             
-            if buckets[bucketKey] == nil {
-                buckets[bucketKey] = (0, 0, 0, 0.0)
+            // Mark as partial if this is the current incomplete bucket
+            let isPartial = offset == 0 && bucketKey == currentBucketKey
+            
+            // Only create bucket if it's within the effective range
+            if bucketKey >= roundedStartDate && bucketKey <= effectiveEndDate {
+                buckets[bucketKey] = (0, 0, 0, 0.0, isPartial)
             }
             
             // Move to next interval
-            if let next = calendar.date(byAdding: component, value: value, to: current) {
-                current = next
+            if let next = calendar.date(byAdding: component, value: value, to: currentBucket) {
+                currentBucket = next
             } else {
                 break
             }
@@ -109,7 +119,7 @@ struct TimeSeriesCalculator {
         
         // Ensure we have the bucket for the current time period (only for offset 0)
         if let currentBucketKey = currentBucketKey, buckets[currentBucketKey] == nil {
-            buckets[currentBucketKey] = (0, 0, 0, 0.0)
+            buckets[currentBucketKey] = (0, 0, 0, 0.0, true)
         }
         
         // Aggregate samples into buckets
@@ -144,9 +154,9 @@ struct TimeSeriesCalculator {
                     bucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: timeForBucket) ?? timeForBucket
                 } else {
                     // For days: calculate days since start and round
-                    let daysSinceStart = calendar.dateComponents([.day], from: startDate, to: timeForBucket).day ?? 0
+                    let daysSinceStart = calendar.dateComponents([.day], from: roundedStartDate, to: timeForBucket).day ?? 0
                     let roundedDays = (daysSinceStart / value) * value
-                    let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: startDate) ?? timeForBucket
+                    let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: roundedStartDate) ?? timeForBucket
                     bucketKey = calendar.startOfDay(for: roundedDate)
                 }
                 
@@ -156,7 +166,9 @@ struct TimeSeriesCalculator {
                     bucket.clicks += sample.mouseClickCount
                     bucket.scroll += sample.scrollTicks
                     bucket.mouse += sample.mouseDistance
-                    buckets[bucketKey] = bucket
+                    // Preserve isPartial flag
+                    let isPartial = bucket.isPartial
+                    buckets[bucketKey] = (bucket.keys, bucket.clicks, bucket.scroll, bucket.mouse, isPartial)
                 }
             }
         }
@@ -165,7 +177,7 @@ struct TimeSeriesCalculator {
         // Filter to only include buckets within the period range
         return buckets
             .filter { bucketEntry in
-                bucketEntry.key >= startDate && bucketEntry.key <= effectiveEndDate
+                bucketEntry.key >= roundedStartDate && bucketEntry.key <= effectiveEndDate
             }
             .sorted { $0.key < $1.key }
             .map { time, values in
@@ -174,7 +186,8 @@ struct TimeSeriesCalculator {
                     keyPressCount: values.keys,
                     mouseClickCount: values.clicks,
                     scrollTicks: values.scroll,
-                    mouseDistance: values.mouse
+                    mouseDistance: values.mouse,
+                    isPartial: values.isPartial
                 )
             }
     }

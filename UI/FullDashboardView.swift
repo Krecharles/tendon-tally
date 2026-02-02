@@ -4,10 +4,11 @@ import AppKit
 /// Main dashboard view with sidebar navigation and comprehensive metrics display.
 struct FullDashboardView: View {
     @ObservedObject var viewModel: MetricsViewModel
-    @State private var selectedTab: Tab = .dashboard
+    @State private var selectedTab: Tab = .today
     
     enum Tab {
-        case dashboard
+        case today
+        case history
         case settings
     }
     
@@ -30,8 +31,10 @@ struct FullDashboardView: View {
             // Main Content Area
             Group {
                 switch selectedTab {
-                case .dashboard:
-                    dashboardContent
+                case .today:
+                    todayContent
+                case .history:
+                    historyContent
                 case .settings:
                     SettingsView(viewModel: viewModel)
                 }
@@ -60,12 +63,22 @@ struct FullDashboardView: View {
             // Navigation Buttons
             VStack(alignment: .leading, spacing: 4) {
                 SidebarButton(
-                    title: "Dashboard",
-                    icon: "chart.bar.fill",
-                    isSelected: selectedTab == .dashboard
+                    title: "Today",
+                    icon: "sun.max.fill",
+                    isSelected: selectedTab == .today
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = .dashboard
+                        selectedTab = .today
+                    }
+                }
+                
+                SidebarButton(
+                    title: "History",
+                    icon: "chart.bar.fill",
+                    isSelected: selectedTab == .history
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = .history
                     }
                 }
                 
@@ -87,19 +100,21 @@ struct FullDashboardView: View {
         .background(Color(NSColor.controlBackgroundColor))
     }
     
-    private var dashboardContent: some View {
+    private var todayContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 // Custom Title Bar Area
-                header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Today")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text("View today's computer usage statistics")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
                 
-                // Today's Totals (always shown, independent of chart time frame)
+                // Today's Totals
                 todayTotalsSection
-                
-                Divider()
-                
-                // Chart Section
-                chartSection
                 
                 permissionBannerIfNeeded
                 footerHint
@@ -109,14 +124,192 @@ struct FullDashboardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Dashboard")
-                .font(.system(size: 28, weight: .bold))
+    private var historyContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header Section
+                headerSection
+                    .padding(.bottom, 24)
+                
+                // Controls Card
+                controlsCard
+                
+                // Chart Section
+                chartSection
+                    .padding(.bottom, 20)
+                
+                permissionBannerIfNeeded
+                    .padding(.bottom, 12)
+                
+                footerHint
+            }
+            .padding(24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+    
+    private var headerSection: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text("History")
+                .font(.system(size: 32, weight: .bold))
                 .foregroundColor(.primary)
-            Text("View your computer usage statistics")
-                .font(.system(size: 14))
+            
+            Spacer()
+        }
+    }
+    
+    private var controlsCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Compact horizontal layout: Time controls on left, Metrics on right
+            GeometryReader { geometry in
+                HStack(alignment: .top, spacing: 20) {
+                    // Time Period & Date Range - Combined compact control
+                    timeAndDateControls
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                        .frame(height: geometry.size.height)
+                    
+                    // Metric Filters - Compact grid layout
+                    metricFilterSection
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(minHeight: 80)
+        }
+        .padding(.top, 16)
+        .padding(.trailing, 16)
+        .padding(.bottom, 16)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private var metricFilterSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Metrics")
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+                .frame(height: 14, alignment: .top)
+            
+            // Compact grid: optimized for 5 items (3+2 layout)
+            LazyVGrid(columns: [
+                GridItem(.flexible(minimum: 60), spacing: 6),
+                GridItem(.flexible(minimum: 60), spacing: 6),
+                GridItem(.flexible(minimum: 60), spacing: 6)
+            ], alignment: .leading, spacing: 6) {
+                ForEach(MetricType.allCases, id: \.self) { metricType in
+                    MetricPill(
+                        title: metricType.rawValue,
+                        metricType: metricType,
+                        isSelected: viewModel.activeMetricFilters.contains(metricType)
+                    ) {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            if viewModel.activeMetricFilters.contains(metricType) {
+                                viewModel.activeMetricFilters.remove(metricType)
+                            } else {
+                                viewModel.activeMetricFilters.insert(metricType)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private var timeAndDateControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Time Period")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+                .frame(height: 14, alignment: .top)
+            
+            // Compact time period selector with integrated date navigation
+            VStack(spacing: 8) {
+                // Time frame selector - compact segmented style
+                HStack(spacing: 4) {
+                    ForEach(TimeFrame.allCases, id: \.self) { timeFrame in
+                        Button(action: {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                                viewModel.selectedTimeFrame = timeFrame
+                                viewModel.timeFrameOffset = 0
+                            }
+                        }) {
+                            Text(timeFrame.rawValue)
+                                .font(.system(size: 12, weight: viewModel.selectedTimeFrame == timeFrame ? .semibold : .regular))
+                                .foregroundColor(viewModel.selectedTimeFrame == timeFrame ? .white : .primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(viewModel.selectedTimeFrame == timeFrame ? Color.accentColor : Color(NSColor.windowBackgroundColor))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(viewModel.selectedTimeFrame == timeFrame ? Color.clear : Color(NSColor.separatorColor), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                // Compact date range navigator
+                HStack(spacing: 6) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            viewModel.timeFrameOffset -= 1
+                        }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 28, height: 28)
+                            .background(Color(NSColor.windowBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Previous period")
+                    
+                    Text(dateRangeLabelText)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(NSColor.windowBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    
+                    Button(action: {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            viewModel.timeFrameOffset += 1
+                            if viewModel.timeFrameOffset > 0 {
+                                viewModel.timeFrameOffset = 0
+                            }
+                        }
+                    }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(viewModel.timeFrameOffset >= 0 ? .secondary : .primary)
+                            .frame(width: 28, height: 28)
+                            .background(Color(NSColor.windowBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.timeFrameOffset >= 0)
+                    .help("Next period")
+                }
+            }
+        }
+    }
+    
+    private var chartSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            chartContainer
         }
     }
     
@@ -150,83 +343,43 @@ struct FullDashboardView: View {
         }
     }
     
-    private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Chart Header with Controls
-            HStack {
-                Text("Activity Over Time")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-            
-            // Time Frame Picker and Navigation
-            chartControls
-            
-            // Metric Filter Pills
-            metricFilterPills
-            
-            // Chart Container
-            chartContainer
-        }
-    }
     
-    private var chartControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Time Frame Picker (no label)
-            Picker("", selection: $viewModel.selectedTimeFrame) {
-                ForEach(TimeFrame.allCases, id: \.self) { timeFrame in
-                    Text(timeFrame.rawValue).tag(timeFrame)
-                }
+    private var dateRangeLabelText: String {
+        let (startDate, endDate) = viewModel.selectedTimeFrame.dateRange(offset: viewModel.timeFrameOffset)
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        
+        if viewModel.timeFrameOffset == 0 {
+            switch viewModel.selectedTimeFrame {
+            case .today:
+                return "Today"
+            case .lastWeek:
+                return "Last 7 days"
+            case .lastMonth:
+                return "Last 30 days"
             }
-            .pickerStyle(.segmented)
-            .onChange(of: viewModel.selectedTimeFrame) { _, _ in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.timeFrameOffset = 0
+        } else {
+            // For past periods, show formatted date range
+            switch viewModel.selectedTimeFrame {
+            case .today:
+                formatter.dateFormat = "EEEE, MMM d"
+                return formatter.string(from: startDate)
+            case .lastWeek:
+                formatter.dateFormat = "MMM d"
+                let startStr = formatter.string(from: startDate)
+                let endStr = formatter.string(from: endDate)
+                let startYear = calendar.component(.year, from: startDate)
+                let endYear = calendar.component(.year, from: endDate)
+                if startYear == endYear {
+                    return "\(startStr) - \(endStr)"
+                } else {
+                    formatter.dateFormat = "MMM d, yyyy"
+                    let endStrWithYear = formatter.string(from: endDate)
+                    return "\(startStr) - \(endStrWithYear)"
                 }
-            }
-            
-            // Navigation and Date Range
-            HStack(spacing: 12) {
-                // Previous period button
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.timeFrameOffset -= 1
-                    }
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 28, height: 28)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-                .help("Previous period")
-                
-                // Date Range Display
-                dateRangeLabel
-                    .frame(maxWidth: .infinity)
-                
-                // Next period button
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.timeFrameOffset += 1
-                        if viewModel.timeFrameOffset > 0 {
-                            viewModel.timeFrameOffset = 0
-                        }
-                    }
-                }) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(viewModel.timeFrameOffset >= 0 ? .secondary : .primary)
-                        .frame(width: 28, height: 28)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.timeFrameOffset >= 0)
-                .help("Next period")
+            case .lastMonth:
+                formatter.dateFormat = "MMMM yyyy"
+                return formatter.string(from: startDate)
             }
         }
     }
@@ -277,8 +430,6 @@ struct FullDashboardView: View {
         }
         
         return Text(rangeText)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
     }
     
@@ -289,42 +440,23 @@ struct FullDashboardView: View {
             filters: viewModel.activeMetricFilters
         )
         
-        // Calculate consistent width based on time frame type
-        // This prevents jarring resizes when navigating between periods
-        // Use expected maximum buckets for each time frame type
-        let expectedBuckets: Int = {
-            switch viewModel.selectedTimeFrame {
-            case .today:
-                return 12 // 24 hours / 2-hour intervals
-            case .lastWeek:
-                return 7 // 7 days
-            case .lastMonth:
-                return 15 // ~30 days / 2-day intervals
-            }
-        }()
-        
-        let bucketWidth: CGFloat = 50
-        let minChartWidth = CGFloat(expectedBuckets) * bucketWidth
-        
-        return GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 32 // Account for horizontal padding
-            let chartWidth = max(availableWidth, minChartWidth)
-            
-            ScrollView(.horizontal, showsIndicators: true) {
+        return VStack(alignment: .leading, spacing: 0) {
+            GeometryReader { geometry in
+                let availableWidth = geometry.size.width
+                
                 BarChartView(
                     dataPoints: dataPoints,
                     filters: viewModel.activeMetricFilters,
                     timeFrame: viewModel.selectedTimeFrame
                 )
                 .frame(
-                    width: chartWidth,
+                    width: availableWidth,
                     height: 400
                 )
-                .padding(.vertical, 16)
-                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
             }
+            .frame(height: 440) // 400 + 40 padding
         }
-        .frame(height: 432) // 400 + 32 padding
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -381,31 +513,6 @@ struct FullDashboardView: View {
         }
     }
     
-    private var metricFilterPills: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Metrics")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 10) {
-                ForEach(MetricType.allCases, id: \.self) { metricType in
-                    MetricPill(
-                        title: metricType.rawValue,
-                        metricType: metricType,
-                        isSelected: viewModel.activeMetricFilters.contains(metricType)
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            if viewModel.activeMetricFilters.contains(metricType) {
-                                viewModel.activeMetricFilters.remove(metricType)
-                            } else {
-                                viewModel.activeMetricFilters.insert(metricType)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
     
     private var footerHint: some View {
         HStack(spacing: 8) {
@@ -456,7 +563,7 @@ struct SidebarButton: View {
     }
 }
 
-/// Metric filter pill button component.
+/// Metric filter pill button component - compact version.
 struct MetricPill: View {
     let title: String
     let metricType: MetricType?
@@ -482,12 +589,47 @@ struct MetricPill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
+                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSelected ? color(for: metricType) : Color(NSColor.windowBackgroundColor))
+                )
+                .foregroundColor(isSelected ? .white : .primary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(isSelected ? Color.clear : Color(NSColor.separatorColor), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Period selection pill button component.
+struct PeriodPill: View {
+    let title: String
+    let timeFrame: TimeFrame
+    let isSelected: Bool
+    let viewModel: MetricsViewModel
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                viewModel.selectedTimeFrame = timeFrame
+                viewModel.timeFrameOffset = 0
+            }
+        }) {
+            Text(title)
                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? color(for: metricType) : Color(NSColor.controlBackgroundColor))
+                        .fill(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
                 )
                 .foregroundColor(isSelected ? .white : .primary)
                 .overlay(

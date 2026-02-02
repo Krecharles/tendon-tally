@@ -97,4 +97,14 @@ struct TimeSeriesDataPoint: Identifiable {
     let mouseClickCount: Int
     let scrollTicks: Int
     let mouseDistance: Double
+    let isPartial: Bool // True if this time period is incomplete (e.g., current hour/day)
+    
+    init(time: Date, keyPressCount: Int, mouseClickCount: Int, scrollTicks: Int, mouseDistance: Double, isPartial: Bool = false) {
+        self.time = time
+        self.keyPressCount = keyPressCount
+        self.mouseClickCount = mouseClickCount
+        self.scrollTicks = scrollTicks
+        self.mouseDistance = mouseDistance
+        self.isPartial = isPartial
+    }
 }
