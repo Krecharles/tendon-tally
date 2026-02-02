@@ -22,9 +22,6 @@ struct SettingsView: View {
                     Text("Settings")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.primary)
-                    Text("Configure your app preferences")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
                 }
                 
                 VStack(alignment: .leading, spacing: 20) {
@@ -84,6 +81,16 @@ struct SettingsView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 }
+                
+                Divider()
+                
+                // Privacy Notice
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Data stays on your Mac.")
+                    Text("Only counts and distances are stored, never which keys.")
+                }
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
             }
             .padding(24)
         }

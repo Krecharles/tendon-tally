@@ -56,9 +56,6 @@ struct FullDashboardView: View {
                 Text("Activity Tracker")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.primary)
-                Text("Computer Usage")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
             }
             .padding(.horizontal, 20)
             .padding(.top, 24)
@@ -112,16 +109,12 @@ struct FullDashboardView: View {
                     Text("Today")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.primary)
-                    Text("View today's computer usage statistics")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
                 }
                 
                 // Today's Totals
                 todayTotalsSection
                 
                 permissionBannerIfNeeded
-                footerHint
             }
             .padding(24)
         }
@@ -144,8 +137,6 @@ struct FullDashboardView: View {
                 
                 permissionBannerIfNeeded
                     .padding(.bottom, 12)
-                
-                footerHint
             }
             .padding(24)
         }
@@ -320,12 +311,6 @@ struct FullDashboardView: View {
     
     private var todayTotalsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Today")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
             
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
                 // First row: 3 items (full row)
@@ -518,20 +503,6 @@ struct FullDashboardView: View {
     }
     
     
-    private var footerHint: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Data stays on your Mac.")
-                Text("Only counts and distances are stored, never which keys.")
-            }
-            .font(.system(size: 11))
-            .foregroundColor(.secondary)
-        }
-        .padding(.top, 8)
-    }
 }
 
 /// Sidebar navigation button component.
