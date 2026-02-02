@@ -4,40 +4,32 @@ import os.log
 /// JSON-backed persistence layer for storing usage samples.
 ///
 /// This controller manages saving and loading of finalized 5-minute usage windows
-/// and the current in-progress sample. Data is stored in the user's Application Support directory.
+/// and the current in-progress sample. Data is stored in daily files in the user's Application Support directory.
 final class PersistenceController {
     static let shared = PersistenceController()
     
     private let logger = Logger(subsystem: "com.activitytracker", category: "Persistence")
 
-    private let fileURL: URL
+    private let dataDirectory: URL
     private let queue = DispatchQueue(label: "ActivityTracker.Persistence")
+    
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
+        return formatter
+    }()
 
     private struct Store: Codable {
         var samples: [UsageSample]
-        var currentSample: UsageSample?
         
-        nonisolated func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(samples, forKey: .samples)
-            try container.encodeIfPresent(currentSample, forKey: .currentSample)
-        }
-        
-        nonisolated init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            samples = try container.decode([UsageSample].self, forKey: .samples)
-            currentSample = try container.decodeIfPresent(UsageSample.self, forKey: .currentSample)
-        }
-        
-        nonisolated init(samples: [UsageSample], currentSample: UsageSample? = nil) {
+        nonisolated init(samples: [UsageSample]) {
             self.samples = samples
-            self.currentSample = currentSample
         }
-        
-        enum CodingKeys: String, CodingKey {
-            case samples
-            case currentSample
-        }
+    }
+    
+    private struct CurrentSampleStore: Codable {
+        var currentSample: UsageSample
     }
 
     private init() {
@@ -49,22 +41,50 @@ final class PersistenceController {
         if !fm.fileExists(atPath: dir.path) {
             try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
         }
-        self.fileURL = dir.appendingPathComponent("usage.json", isDirectory: false)
+        self.dataDirectory = dir
+    }
+    
+    /// Get the file URL for a specific date's samples
+    private func fileURL(for date: Date) -> URL {
+        let dateString = dateFormatter.string(from: date)
+        return dataDirectory.appendingPathComponent("usage_\(dateString).json", isDirectory: false)
+    }
+    
+    /// Get the file URL for the current sample
+    private var currentSampleURL: URL {
+        dataDirectory.appendingPathComponent("current.json", isDirectory: false)
     }
 
     /// Load all stored samples from disk. Returns finalized samples and optionally a current sample if it's still valid.
     func loadSamples() -> (samples: [UsageSample], currentSample: UsageSample?) {
         queue.sync {
-            guard let data = try? Data(contentsOf: fileURL) else {
-                logger.info("No existing data file found, starting fresh")
-                return ([], nil)
-            }
+            var allSamples: [UsageSample] = []
+            let fm = FileManager.default
+            
+            // Load all daily files
             do {
-                let store = try JSONDecoder().decode(Store.self, from: data)
+                let files = try fm.contentsOfDirectory(at: dataDirectory, includingPropertiesForKeys: [.contentModificationDateKey])
+                let dailyFiles = files.filter { $0.lastPathComponent.hasPrefix("usage_") && $0.lastPathComponent.hasSuffix(".json") }
                 
-                // Check if current sample is still valid (not older than 5 minutes)
-                var validCurrentSample: UsageSample? = nil
-                if let current = store.currentSample {
+                for fileURL in dailyFiles {
+                    guard let data = try? Data(contentsOf: fileURL) else { continue }
+                    do {
+                        let store = try JSONDecoder().decode(Store.self, from: data)
+                        allSamples.append(contentsOf: store.samples)
+                    } catch {
+                        logger.warning("Failed to decode daily file \(fileURL.lastPathComponent): \(error.localizedDescription)")
+                    }
+                }
+            } catch {
+                logger.info("No existing data directory or files found, starting fresh")
+            }
+            
+            // Load current sample
+            var validCurrentSample: UsageSample? = nil
+            if let currentData = try? Data(contentsOf: currentSampleURL) {
+                do {
+                    let currentStore = try JSONDecoder().decode(CurrentSampleStore.self, from: currentData)
+                    let current = currentStore.currentSample
                     let now = Date()
                     let windowLength: TimeInterval = 5 * 60
                     // If the current sample's window hasn't expired, it's still valid
@@ -75,48 +95,96 @@ final class PersistenceController {
                     } else {
                         logger.info("Current sample expired, discarding")
                     }
+                } catch {
+                    logger.warning("Failed to decode current sample: \(error.localizedDescription)")
                 }
-                
-                logger.info("Loaded \(store.samples.count) finalized samples from disk")
-                return (store.samples, validCurrentSample)
-            } catch {
-                logger.error("Failed to decode stored data: \(error.localizedDescription)")
-                return ([], nil)
             }
+            
+            logger.info("Loaded \(allSamples.count) finalized samples from disk")
+            return (allSamples, validCurrentSample)
         }
     }
 
-    /// Persist the given samples to disk, overwriting any previous contents.
-    func saveSamples(_ samples: [UsageSample], currentSample: UsageSample? = nil) {
+    /// Save a finalized sample to the appropriate daily file.
+    func saveFinalizedSample(_ sample: UsageSample) {
         queue.async {
-            let store = Store(samples: samples, currentSample: currentSample)
+            let calendar = Calendar.current
+            let dayStart = calendar.startOfDay(for: sample.start)
+            let dayFileURL = self.fileURL(for: dayStart)
+            
+            // Load existing samples for this day
+            var daySamples: [UsageSample] = []
+            if let data = try? Data(contentsOf: dayFileURL) {
+                if let store = try? JSONDecoder().decode(Store.self, from: data) {
+                    daySamples = store.samples
+                }
+            }
+            
+            // Add the new sample (avoid duplicates by checking ID)
+            if !daySamples.contains(where: { $0.id == sample.id }) {
+                daySamples.append(sample)
+                // Keep samples sorted by start time
+                daySamples.sort { $0.start < $1.start }
+            }
+            
+            // Save the day's samples
+            let store = Store(samples: daySamples)
             guard let data = try? JSONEncoder().encode(store) else {
-                self.logger.error("Failed to encode data for saving")
+                self.logger.error("Failed to encode data for saving finalized sample")
                 return
             }
             do {
-                try data.write(to: self.fileURL, options: [.atomic])
-                if let current = currentSample {
-                    self.logger.info("Saved \(samples.count) samples and current sample (keys: \(current.keyPressCount), clicks: \(current.mouseClickCount))")
-                } else {
-                    self.logger.info("Saved \(samples.count) samples (no current sample)")
-                }
+                try data.write(to: dayFileURL, options: [.atomic])
+                self.logger.debug("Saved finalized sample to \(dayFileURL.lastPathComponent)")
             } catch {
-                self.logger.error("Failed to write data to disk: \(error.localizedDescription)")
+                self.logger.error("Failed to write finalized sample to disk: \(error.localizedDescription)")
             }
         }
+    }
+    
+    /// Save the current sample to current.json
+    func saveCurrentSample(_ currentSample: UsageSample) {
+        queue.async {
+            let store = CurrentSampleStore(currentSample: currentSample)
+            guard let data = try? JSONEncoder().encode(store) else {
+                self.logger.error("Failed to encode current sample for saving")
+                return
+            }
+            do {
+                try data.write(to: self.currentSampleURL, options: [.atomic])
+                self.logger.debug("Saved current sample (keys: \(currentSample.keyPressCount), clicks: \(currentSample.mouseClickCount))")
+            } catch {
+                self.logger.error("Failed to write current sample to disk: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Legacy method for compatibility - saves current sample only
+    func saveSamples(_ samples: [UsageSample], currentSample: UsageSample? = nil) {
+        if let current = currentSample {
+            saveCurrentSample(current)
+        }
+        // Note: finalized samples should be saved via saveFinalizedSample
+        // This method is kept for backward compatibility but only saves current sample
     }
     
     /// Delete all stored samples from disk.
     func deleteAllSamples() {
         queue.async {
-            let emptyStore = Store(samples: [], currentSample: nil)
-            guard let data = try? JSONEncoder().encode(emptyStore) else {
-                self.logger.error("Failed to encode empty store for deletion")
-                return
-            }
+            let fm = FileManager.default
             do {
-                try data.write(to: self.fileURL, options: [.atomic])
+                // Delete all daily files
+                let files = try fm.contentsOfDirectory(at: self.dataDirectory, includingPropertiesForKeys: nil)
+                let dailyFiles = files.filter { $0.lastPathComponent.hasPrefix("usage_") && $0.lastPathComponent.hasSuffix(".json") }
+                for fileURL in dailyFiles {
+                    try? fm.removeItem(at: fileURL)
+                }
+                
+                // Delete current sample file
+                if fm.fileExists(atPath: self.currentSampleURL.path) {
+                    try fm.removeItem(at: self.currentSampleURL)
+                }
+                
                 self.logger.info("Deleted all stored samples")
             } catch {
                 self.logger.error("Failed to delete samples: \(error.localizedDescription)")
@@ -129,12 +197,12 @@ final class PersistenceController {
         queue.async {
             let calendar = Calendar.current
             let now = Date()
-            var samples: [UsageSample] = []
             
             // Generate data for the last 4 days
             for dayOffset in 0..<4 {
                 guard let dayStart = calendar.date(byAdding: .day, value: -dayOffset, to: now) else { continue }
                 let startOfDay = calendar.startOfDay(for: dayStart)
+                var daySamples: [UsageSample] = []
                 
                 // Generate 5-minute intervals for the day (288 intervals per day)
                 let intervalsPerDay = 288
@@ -174,24 +242,22 @@ final class PersistenceController {
                         mouseDistance: baseMouse * randomFactor
                     )
                     
-                    samples.append(sample)
+                    daySamples.append(sample)
                 }
-            }
-            
-            // Sort by start time (newest first)
-            samples.sort { $0.start > $1.start }
-            
-            // Save the test data
-            let store = Store(samples: samples, currentSample: nil)
-            guard let data = try? JSONEncoder().encode(store) else {
-                self.logger.error("Failed to encode test data")
-                return
-            }
-            do {
-                try data.write(to: self.fileURL, options: [.atomic])
-                self.logger.info("Generated and saved \(samples.count) test samples for the last 4 days")
-            } catch {
-                self.logger.error("Failed to save test data: \(error.localizedDescription)")
+                
+                // Save this day's samples to its daily file
+                if !daySamples.isEmpty {
+                    let dayFileURL = self.fileURL(for: startOfDay)
+                    let store = Store(samples: daySamples)
+                    if let data = try? JSONEncoder().encode(store) {
+                        do {
+                            try data.write(to: dayFileURL, options: [.atomic])
+                            self.logger.info("Generated and saved \(daySamples.count) test samples for \(self.dateFormatter.string(from: startOfDay))")
+                        } catch {
+                            self.logger.error("Failed to save test data for \(self.dateFormatter.string(from: startOfDay)): \(error.localizedDescription)")
+                        }
+                    }
+                }
             }
         }
     }

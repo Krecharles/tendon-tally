@@ -74,8 +74,8 @@ final class MetricsAggregator {
         saveTimer?.invalidate()
         saveTimer = nil
         eventTapManager.stop()
-        // Persist any history and current sample accumulated during this run.
-        persistence.saveSamples(self.history, currentSample: self.currentSample)
+        // Persist current sample
+        persistence.saveCurrentSample(self.currentSample)
         logger.info("Final save completed: \(self.history.count) samples, current sample has \(self.currentSample.keyPressCount) keys, \(self.currentSample.mouseClickCount) clicks")
     }
     
@@ -111,8 +111,8 @@ final class MetricsAggregator {
     private func saveCurrentSample() {
         // Refresh current sample before saving
         refreshCurrentSample(end: self.currentSample.end)
-        // Persist history and current sample
-        persistence.saveSamples(self.history, currentSample: self.currentSample)
+        // Persist current sample only (finalized samples are saved separately)
+        persistence.saveCurrentSample(self.currentSample)
         logger.debug("Periodic save: current sample has \(self.currentSample.keyPressCount) keys, \(self.currentSample.mouseClickCount) clicks, \(self.currentSample.scrollTicks) scroll ticks")
     }
 
@@ -134,9 +134,12 @@ final class MetricsAggregator {
         let finalizedClicks = self.currentSample.mouseClickCount
         let finalizedScroll = self.currentSample.scrollTicks
 
-        self.history.insert(self.currentSample, at: 0)
+        let finalizedSample = self.currentSample
+        self.history.insert(finalizedSample, at: 0)
         logger.info("Rolled window: finalized sample with \(finalizedKeys) keys, \(finalizedClicks) clicks, \(finalizedScroll) scroll ticks")
-        persistence.saveSamples(self.history, currentSample: nil) // No current sample yet for new window
+        
+        // Save the finalized sample to its daily file
+        persistence.saveFinalizedSample(finalizedSample)
 
         // Start a new window.
         self.windowStart = now
@@ -154,7 +157,7 @@ final class MetricsAggregator {
             mouseDistance: 0
         )
         // Save the new current sample immediately
-        persistence.saveSamples(self.history, currentSample: self.currentSample)
+        persistence.saveCurrentSample(self.currentSample)
         let formatter = ISO8601DateFormatter()
         logger.info("Started new window at \(formatter.string(from: now))")
         pushUpdate()
