@@ -8,17 +8,46 @@ final class MetricsViewModel: ObservableObject {
     @Published var recentHistory: [UsageSample] = []
     @Published var todayTotals: UsageSample
     @Published var permissionIssueMessage: String?
-    @Published var selectedTimeFrame: TimeFrame = .today
-    @Published var timeFrameOffset: Int = 0 // 0 = current period, -1 = previous, -2 = before that, etc.
-    @Published var activeMetricFilters: Set<MetricType> = Set(MetricType.individualMetrics + [.aggregate])
+    @Published var selectedTimeFrame: TimeFrame {
+        didSet {
+            UserDefaults.standard.set(selectedTimeFrame.rawValue, forKey: "selectedTimeFrame")
+        }
+    }
+    @Published var timeFrameOffset: Int = 0 // 0 = current period, -1 = previous, -2 = before that, etc. (NOT persisted - always starts at 0)
+    @Published var activeMetricFilters: Set<MetricType> {
+        didSet {
+            let filterStrings = activeMetricFilters.map { $0.rawValue }
+            UserDefaults.standard.set(filterStrings, forKey: "activeMetricFilters")
+        }
+    }
 
     private let aggregator: MetricsAggregator
+    private let userDefaults = UserDefaults.standard
 
     init(aggregator: MetricsAggregator) {
         self.aggregator = aggregator
         self.currentSample = aggregator.currentSample
         self.todayTotals = MetricsViewModel.computeTodayTotals(current: aggregator.currentSample,
                                                                history: aggregator.history)
+        
+        // Load persisted preferences
+        if let savedTimeFrameString = userDefaults.string(forKey: "selectedTimeFrame"),
+           let savedTimeFrame = TimeFrame(rawValue: savedTimeFrameString) {
+            self.selectedTimeFrame = savedTimeFrame
+        } else {
+            self.selectedTimeFrame = .today
+        }
+        
+        if let savedFilterStrings = userDefaults.array(forKey: "activeMetricFilters") as? [String] {
+            let savedFilters = Set(savedFilterStrings.compactMap { MetricType(rawValue: $0) })
+            if !savedFilters.isEmpty {
+                self.activeMetricFilters = savedFilters
+            } else {
+                self.activeMetricFilters = Set(MetricType.individualMetrics + [.aggregate])
+            }
+        } else {
+            self.activeMetricFilters = Set(MetricType.individualMetrics + [.aggregate])
+        }
 
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in

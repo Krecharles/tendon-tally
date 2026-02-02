@@ -100,9 +100,6 @@ struct BarChartView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Usage Over Time")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
             
             if dataPoints.isEmpty || (filters.isEmpty || (activeMetrics.isEmpty && !showAggregate)) {
                 Text("No data to display")
@@ -118,7 +115,6 @@ struct BarChartView: View {
                     )
                     .foregroundStyle(by: .value("Metric", dataPoint.metricType.rawValue))
                     .position(by: .value("Metric", dataPoint.metricType.rawValue))
-                    .opacity(dataPoint.isPartial ? 0.7 : 1.0)
                 }
                 .chartForegroundStyleScale(domain: chartLegendItems, range: chartColors)
                 .chartLegend(.hidden)

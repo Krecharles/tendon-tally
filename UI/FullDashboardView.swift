@@ -4,9 +4,13 @@ import AppKit
 /// Main dashboard view with sidebar navigation and comprehensive metrics display.
 struct FullDashboardView: View {
     @ObservedObject var viewModel: MetricsViewModel
-    @State private var selectedTab: Tab = .today
+    @AppStorage("selectedTab") private var selectedTabRawValue: String = Tab.today.rawValue
     
-    enum Tab {
+    private var selectedTab: Tab {
+        Tab(rawValue: selectedTabRawValue) ?? .today
+    }
+    
+    enum Tab: String {
         case today
         case history
         case settings
@@ -68,7 +72,7 @@ struct FullDashboardView: View {
                     isSelected: selectedTab == .today
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = .today
+                        selectedTabRawValue = Tab.today.rawValue
                     }
                 }
                 
@@ -78,7 +82,7 @@ struct FullDashboardView: View {
                     isSelected: selectedTab == .history
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = .history
+                        selectedTabRawValue = Tab.history.rawValue
                     }
                 }
                 
@@ -88,7 +92,7 @@ struct FullDashboardView: View {
                     isSelected: selectedTab == .settings
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = .settings
+                        selectedTabRawValue = Tab.settings.rawValue
                     }
                 }
             }
