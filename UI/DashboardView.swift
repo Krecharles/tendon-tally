@@ -4,136 +4,101 @@ import AppKit
 struct DashboardView: View {
     @ObservedObject var viewModel: MetricsViewModel
 
-    private var timeRemainingDescription: String {
-        let now = Date()
-        let remaining = max(0, viewModel.currentSample.end.timeIntervalSince(now))
-        let minutes = Int(remaining) / 60
-        let seconds = Int(remaining) % 60
-        return String(format: "%02dm %02ds", minutes, seconds)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            todayHeader
-            todayTotalsSection
-            permissionBannerIfNeeded
-            Spacer()
-            openDashboardButton
-            footerHint
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var todayHeader: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 24) {
+            // Custom Title Bar Area
             VStack(alignment: .leading, spacing: 4) {
                 Text("Today")
-                    .font(.headline)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.primary)
             }
-            Spacer()
+            
+            // Today's Totals
+            todayTotalsSection
+            
+            permissionBannerIfNeeded
         }
+        .padding(24)
+        .frame(width: 400)
     }
     
-    private var openDashboardButton: some View {
-        Button(action: openDashboard) {
-            HStack {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 12))
-                Text("Open Dashboard")
-                    .font(.subheadline)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(8)
-        }
-        .buttonStyle(.plain)
-    }
-    
-    private func openDashboard() {
-        // Activate the application
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        
-        // Find and show the main window
-        // Look for any visible window first, then any window
-        if let window = NSApplication.shared.windows.first(where: { $0.isVisible }) {
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-        } else if let window = NSApplication.shared.windows.first {
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-        } else {
-            // If no window exists, trigger SwiftUI to create one
-            // This works by activating the app, which should cause WindowGroup to create a window
-            DispatchQueue.main.async {
-                if let window = NSApplication.shared.windows.first {
-                    window.makeKeyAndOrderFront(nil)
-                }
-            }
-        }
-    }
 
     @ViewBuilder
     private var permissionBannerIfNeeded: some View {
         if let message = viewModel.permissionIssueMessage {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Permissions Required")
-                    .font(.subheadline).bold()
-                Text("\(message) Open System Settings → Privacy & Security → Accessibility / Input Monitoring and enable this app.")
-                    .font(.caption2)
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.red)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Permissions Required")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("\(message) Open System Settings → Privacy & Security → Accessibility / Input Monitoring and enable this app.")
+                        .font(.system(size: 12))
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .padding(8)
-            .background(Color.red.opacity(0.08))
-            .cornerRadius(8)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.red.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         } else {
             EmptyView()
         }
     }
 
     private var todayTotalsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                metricTile(title: "Keys", value: viewModel.todayTotals.keyPressCount)
-                metricTile(title: "Clicks", value: viewModel.todayTotals.mouseClickCount)
-            }
-            HStack {
-                metricTile(title: "Scroll kTicks", value: viewModel.todayTotals.scrollTicks / 1_000)
-                metricTile(title: "Mouse kPx", value: Int(viewModel.todayTotals.mouseDistance / 1_000))
-            }
-            HStack {
-                let total = viewModel.todayTotals.keyPressCount +
-                           viewModel.todayTotals.mouseClickCount +
-                           viewModel.todayTotals.scrollTicks / 1_000 +
-                           Int(viewModel.todayTotals.mouseDistance / 1_000)
-                metricTile(title: "Total", value: total)
+        VStack(alignment: .leading, spacing: 12) {
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
+                // First row: 2 items
+                GridRow {
+                    metricTotalTile(title: "Keys", value: viewModel.todayTotals.keyPressCount, icon: "keyboard.fill", color: .blue)
+                    metricTotalTile(title: "Clicks", value: viewModel.todayTotals.mouseClickCount, icon: "cursorarrow.click", color: .red)
+                }
+                // Second row: 2 items
+                GridRow {
+                    metricTotalTile(title: "Scroll ticks (100s)", value: viewModel.todayTotals.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
+                    metricTotalTile(title: "Mouse pixels (1000s)", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
+                }
+                // Third row: Total tile (same size as others)
+                GridRow {
+                    let total = viewModel.todayTotals.keyPressCount + 
+                               viewModel.todayTotals.mouseClickCount + 
+                               viewModel.todayTotals.scrollTicks / 100 + 
+                               Int(viewModel.todayTotals.mouseDistance / 1_000)
+                    metricTotalTile(title: "Total", value: total, icon: "chart.bar.fill", color: .purple)
+                    Rectangle().fill(Color.clear).frame(height: 0) // Empty cell to keep grid alignment
+                }
             }
         }
+    }
+    
+    private func metricTotalTile(title: String, value: Int, icon: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(color)
+                .frame(width: 32, height: 32)
+                .background(color.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                Text("\(value)")
+                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+        }
+        .padding(12)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private func metricTile(title: String, value: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("\(value)")
-                .font(.body.monospacedDigit())
-        }
-        .padding(8)
-        .background(Color.gray.opacity(0.08))
-        .cornerRadius(8)
-    }
-
-    private var footerHint: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Data stays on your Mac.")
-            Text("Only counts and distances are stored, never which keys.")
-        }
-        .font(.caption2)
-        .foregroundColor(.secondary)
-    }
 }

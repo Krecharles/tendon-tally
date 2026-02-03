@@ -47,7 +47,7 @@ struct BarChartView: View {
         case .clicks:
             return Double(point.mouseClickCount)
         case .scroll:
-            return Double(point.scrollTicks) / 1000.0
+            return Double(point.scrollTicks) / 100.0
         case .mouseDistance:
             return point.mouseDistance / 1000.0
         case .aggregate:
@@ -59,7 +59,7 @@ struct BarChartView: View {
         // Always sum all metrics regardless of filter selection
         return Double(point.keyPressCount) + 
                Double(point.mouseClickCount) + 
-               Double(point.scrollTicks) / 1000.0 + 
+               Double(point.scrollTicks) / 100.0 + 
                point.mouseDistance / 1000.0
     }
     

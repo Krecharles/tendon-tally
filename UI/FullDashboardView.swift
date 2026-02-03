@@ -115,6 +115,7 @@ struct FullDashboardView: View {
                 todayTotalsSection
                 
                 permissionBannerIfNeeded
+                unitsExplanation
             }
             .padding(24)
         }
@@ -137,6 +138,9 @@ struct FullDashboardView: View {
                 
                 permissionBannerIfNeeded
                     .padding(.bottom, 12)
+                
+                unitsExplanation
+                    .padding(.top, 4)
             }
             .padding(24)
         }
@@ -317,19 +321,26 @@ struct FullDashboardView: View {
                 GridRow {
                     metricTotalTile(title: "Keys", value: todayMetrics.keyPressCount, icon: "keyboard.fill", color: .blue)
                     metricTotalTile(title: "Clicks", value: todayMetrics.mouseClickCount, icon: "cursorarrow.click", color: .red)
-                    metricTotalTile(title: "Scroll kTicks", value: todayMetrics.scrollTicks / 1_000, icon: "arrow.up.arrow.down", color: .green)
+                    metricTotalTile(title: "Scroll ticks (100s)", value: todayMetrics.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
                 }
                 // Second row: 2 items aligned with first two columns
                 GridRow {
-                    metricTotalTile(title: "Mouse kPx", value: Int(todayMetrics.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
+                    metricTotalTile(title: "Mouse pixels (1000s)", value: Int(todayMetrics.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
                     let total = todayMetrics.keyPressCount + 
                                todayMetrics.mouseClickCount + 
-                               todayMetrics.scrollTicks / 1_000 + 
+                               todayMetrics.scrollTicks / 100 + 
                                Int(todayMetrics.mouseDistance / 1_000)
                     metricTotalTile(title: "Total", value: total, icon: "chart.bar.fill", color: .purple)
                 }
             }
         }
+    }
+    
+    private var unitsExplanation: some View {
+        Text("Units are scaled so typical values are of a similar magnitude for an average user (scroll ticks in 100s, mouse distance in 1000s of pixels).")
+            .font(.caption2)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
     
     

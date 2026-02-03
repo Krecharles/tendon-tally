@@ -24,9 +24,7 @@ final class StatusItemController {
         self.statusItem = statusItem
 
         popover.behavior = .transient
-        // Slightly wider so long permission messages can wrap cleanly without truncation,
-        // and a bit shorter so the content does not appear vertically centered in a tall void.
-        popover.contentSize = NSSize(width: 300, height: 10)
+        popover.contentSize = NSSize(width: 400, height: 400)
         popover.contentViewController = NSHostingController(rootView: DashboardView(viewModel: viewModel))
     }
 
