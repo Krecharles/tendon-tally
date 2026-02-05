@@ -52,7 +52,11 @@ struct FullDashboardView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             // App Title/Header (draggable area)
-            VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                Image("app-icon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
                 Text("TendonTally")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.primary)

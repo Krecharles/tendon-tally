@@ -17,7 +17,14 @@ final class StatusItemController {
     func setupStatusItem() {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: "TendonTally")
+            // Use custom icon from asset catalog
+            if let customIcon = NSImage(named: "menubar-icon") {
+                customIcon.isTemplate = true // Makes it adapt to light/dark mode
+                button.image = customIcon
+            } else {
+                // Fallback to SF Symbol if asset not found
+                button.image = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: "TendonTally")
+            }
             button.action = #selector(togglePopover(_:))
             button.target = self
         }

@@ -128,7 +128,7 @@
 			productName = TendonTally;
 			productReference = 2B3B57542F2A250B0001626F /* TendonTally.app */;
 			productType = "com.apple.product-type.application";
-			};
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */

@@ -8,9 +8,15 @@ struct DashboardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Title
-            Text("Today's usage")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.primary)
+            HStack(spacing: 12) {
+                Image("app-icon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 24, height: 24)
+                Text("Today's usage")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
+            }
             
             // Today's Totals
             todayTotalsSection

@@ -1,7 +1,5 @@
 {
-  "fill" : {
-    "solid" : "srgb:0.97522,1.00000,0.96930,1.00000"
-  },
+  "fill" : "automatic",
   "groups" : [
     {
       "layers" : [
