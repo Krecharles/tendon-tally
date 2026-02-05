@@ -53,7 +53,7 @@ struct FullDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             // App Title/Header (draggable area)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Activity Tracker")
+                Text("TendonTally")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.primary)
             }

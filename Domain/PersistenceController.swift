@@ -8,10 +8,10 @@ import os.log
 final class PersistenceController {
     static let shared = PersistenceController()
     
-    private let logger = Logger(subsystem: "com.activitytracker", category: "Persistence")
+    private let logger = Logger(subsystem: "com.tendontally", category: "Persistence")
 
     private let dataDirectory: URL
-    private let queue = DispatchQueue(label: "ActivityTracker.Persistence")
+    private let queue = DispatchQueue(label: "TendonTally.Persistence")
     
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -37,7 +37,7 @@ final class PersistenceController {
         let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
 
-        let dir = appSupport.appendingPathComponent("ActivityTracker", isDirectory: true)
+        let dir = appSupport.appendingPathComponent("TendonTally", isDirectory: true)
         if !fm.fileExists(atPath: dir.path) {
             try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
         }

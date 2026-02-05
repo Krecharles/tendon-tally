@@ -11,6 +11,9 @@ final class AppState: ObservableObject {
     
     @Published var viewModel: MetricsViewModel?
     
+    /// Notification name for opening the dashboard window
+    static let openDashboardNotification = Notification.Name("openDashboard")
+    
     private init() {}
     
     func setViewModel(_ viewModel: MetricsViewModel) {

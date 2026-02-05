@@ -1,4 +1,4 @@
-## macOS Activity Tracker (Menu Bar App)
+## TendonTally – macOS Activity Tracker (Menu Bar App)
 
 This project is a Swift + SwiftUI based macOS menu bar application that helps you monitor your computer usage:
 
@@ -26,7 +26,7 @@ This project is configured to work with Swift Package Manager, so you can build 
 swift build
 
 # Run the app
-swift run ActivityTracker
+swift run TendonTally
 
 # Or use the convenience script
 ./run.sh
@@ -43,7 +43,7 @@ The app will appear as a **menu bar icon** and open the dashboard popover on cli
 
 If you prefer to use Xcode:
 
-1. Open `ActivityTracker/ActivityTracker.xcodeproj` in Xcode.
+1. Open `TendonTally/TendonTally.xcodeproj` in Xcode.
 2. Ensure the **deployment target** is macOS 14.0 or later.
 3. Build & run. The app will appear as a **menu bar icon** and open the dashboard popover on click.
 

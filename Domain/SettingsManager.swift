@@ -26,7 +26,7 @@ final class SettingsManager {
         // For a production app, you may need a helper app
         if #available(macOS 13.0, *) {
             // Use the new SMAppService API on macOS 13+
-            let service = SMAppService.loginItem(identifier: Bundle.main.bundleIdentifier ?? "com.activitytracker")
+            let service = SMAppService.loginItem(identifier: Bundle.main.bundleIdentifier ?? "com.tendontally")
             do {
                 if enabled {
                     try service.register()
@@ -35,12 +35,12 @@ final class SettingsManager {
                 }
             } catch {
                 // Fall back to deprecated API if new one fails
-                let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.activitytracker"
+                let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.tendontally"
                 SMLoginItemSetEnabled(bundleIdentifier as CFString, enabled)
             }
         } else {
             // Use deprecated API for older macOS versions
-            let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.activitytracker"
+            let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.tendontally"
             SMLoginItemSetEnabled(bundleIdentifier as CFString, enabled)
         }
     }

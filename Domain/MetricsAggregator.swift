@@ -8,7 +8,7 @@ import os.log
 final class MetricsAggregator {
     private let eventTapManager = EventTapManager()
     private let persistence = PersistenceController.shared
-    private let logger = Logger(subsystem: "com.activitytracker", category: "MetricsAggregator")
+    private let logger = Logger(subsystem: "com.tendontally", category: "MetricsAggregator")
 
     private let windowLength: TimeInterval = 5 * 60
     private var windowStart: Date = Date()

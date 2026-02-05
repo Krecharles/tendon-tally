@@ -2,14 +2,15 @@ import SwiftUI
 import AppKit
 
 @main
-struct ActivityTrackerApp: App {
+struct TendonTallyApp: App {
     /// Shared app delegate to manage NSStatusItem and AppKit integration.
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState.shared
 
     /// Root SwiftUI scene. Main window shows the full dashboard with tabs and filters.
+    /// Using Window instead of WindowGroup for single-instance utility window that can be reopened.
     var body: some Scene {
-        WindowGroup {
+        Window("Dashboard", id: "main-dashboard") {
             if let viewModel = appState.viewModel {
                 FullDashboardView(viewModel: viewModel)
             } else {
@@ -52,6 +53,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Stop aggregator (this will save current sample)
         aggregator?.stop()
         statusItemController?.tearDown()
+    }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // If there are no visible windows, activate the app
+        // The Window scene will be opened by SwiftUI automatically
+        if !flag {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+        return true
     }
 }
 

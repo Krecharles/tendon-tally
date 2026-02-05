@@ -2,25 +2,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "ActivityTracker",
+    name: "TendonTally",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .executable(
-            name: "ActivityTracker",
-            targets: ["ActivityTracker"]
+            name: "TendonTally",
+            targets: ["TendonTally"]
         )
     ],
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "ActivityTracker",
+            name: "TendonTally",
             dependencies: [],
             path: ".",
             exclude: [
-                "ActivityTracker/ActivityTracker/Assets.xcassets",
-                "ActivityTracker/ActivityTracker.xcodeproj",
+                "TendonTally/TendonTally/Assets.xcassets",
+                "TendonTally/TendonTally.xcodeproj",
                 "README.md"
             ],
             sources: [

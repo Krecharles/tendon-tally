@@ -3,20 +3,21 @@ import AppKit
 
 struct DashboardView: View {
     @ObservedObject var viewModel: MetricsViewModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Custom Title Bar Area
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Today")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
-            }
+        VStack(alignment: .leading, spacing: 16) {
+            // Title
+            Text("Today's usage")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.primary)
             
             // Today's Totals
             todayTotalsSection
             
             permissionBannerIfNeeded
+            
+            openDashboardButton
         }
         .padding(24)
         .frame(width: 400)
@@ -60,8 +61,8 @@ struct DashboardView: View {
                 }
                 // Second row: 2 items
                 GridRow {
-                    metricTotalTile(title: "Scroll ticks (100s)", value: viewModel.todayTotals.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
-                    metricTotalTile(title: "Mouse pixels (1000s)", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
+                    metricTotalTile(title: "Scroll ticks", value: viewModel.todayTotals.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
+                    metricTotalTile(title: "Mouse pixels", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
                 }
                 // Third row: Total tile (same size as others)
                 GridRow {
@@ -99,6 +100,32 @@ struct DashboardView: View {
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private var openDashboardButton: some View {
+        Button(action: openDashboard) {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 12))
+                Text("Open Dashboard")
+                    .font(.subheadline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Color.accentColor)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func openDashboard() {
+        // Activate the application
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        
+        // Use SwiftUI's openWindow to open the Window scene
+        // This works reliably even when the window has been closed
+        openWindow(id: "main-dashboard")
     }
 
 }

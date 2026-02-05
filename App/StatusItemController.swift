@@ -17,14 +17,14 @@ final class StatusItemController {
     func setupStatusItem() {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: "Activity Tracker")
+            button.image = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: "TendonTally")
             button.action = #selector(togglePopover(_:))
             button.target = self
         }
         self.statusItem = statusItem
 
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 400, height: 400)
+        popover.contentSize = NSSize(width: 400, height: 450)
         popover.contentViewController = NSHostingController(rootView: DashboardView(viewModel: viewModel))
     }
 

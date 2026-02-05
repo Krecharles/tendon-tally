@@ -1,0 +1,59 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.97522,1.00000,0.96930,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "cursor.png",
+          "name" : "cursor",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              20,
+              81.474853515625
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "heart.fill.png",
+          "name" : "heart.fill",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              32.1739501953125
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

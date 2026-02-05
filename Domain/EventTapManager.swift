@@ -14,7 +14,7 @@ final class EventTapManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    private let queue = DispatchQueue(label: "ActivityTracker.EventTapManager")
+    private let queue = DispatchQueue(label: "TendonTally.EventTapManager")
     private var lastMouseLocation: CGPoint?
 
     /// Current snapshot is updated on `queue` and read via `snapshot()` API.
