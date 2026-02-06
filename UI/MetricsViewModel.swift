@@ -20,6 +20,11 @@ final class MetricsViewModel: ObservableObject {
             UserDefaults.standard.set(filterStrings, forKey: "activeMetricFilters")
         }
     }
+    @Published var kuiConfig: KUIConfig {
+        didSet {
+            saveKUIConfig(kuiConfig)
+        }
+    }
 
     private let aggregator: MetricsAggregator
     private let userDefaults = UserDefaults.standard
@@ -27,8 +32,10 @@ final class MetricsViewModel: ObservableObject {
     init(aggregator: MetricsAggregator) {
         self.aggregator = aggregator
         self.currentSample = aggregator.currentSample
-        self.todayTotals = MetricsViewModel.computeTodayTotals(current: aggregator.currentSample,
-                                                               history: aggregator.history)
+        self.todayTotals = MetricsViewModel.computeTodayTotals(
+            current: aggregator.currentSample,
+            history: aggregator.history
+        )
         
         // Load persisted preferences
         if let savedTimeFrameString = userDefaults.string(forKey: "selectedTimeFrame"),
@@ -49,6 +56,13 @@ final class MetricsViewModel: ObservableObject {
             self.activeMetricFilters = Set(MetricType.individualMetrics + [.aggregate])
         }
 
+        // Load KUI configuration (or use defaults).
+        if let loadedConfig = MetricsViewModel.loadKUIConfig() {
+            self.kuiConfig = loadedConfig
+        } else {
+            self.kuiConfig = .default
+        }
+
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in
                 guard let self else { return }
@@ -62,6 +76,28 @@ final class MetricsViewModel: ObservableObject {
             Task { @MainActor in
                 self?.permissionIssueMessage = message
             }
+        }
+    }
+
+    // MARK: - KUI Persistence
+
+    private static let kuiConfigKey = "kuiConfig"
+
+    private static func loadKUIConfig() -> KUIConfig? {
+        let defaults = UserDefaults.standard
+        if let data = defaults.data(forKey: kuiConfigKey) {
+            let decoder = JSONDecoder()
+            if let config = try? decoder.decode(KUIConfig.self, from: data) {
+                return config
+            }
+        }
+        return nil
+    }
+
+    private func saveKUIConfig(_ config: KUIConfig) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(config) {
+            userDefaults.set(data, forKey: MetricsViewModel.kuiConfigKey)
         }
     }
 

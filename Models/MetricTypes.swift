@@ -89,6 +89,44 @@ struct AggregatedMetrics {
     let mouseDistance: Double
 }
 
+/// Configuration for the Key Usage Indicator (KUI).
+///
+/// The KUI is a single metric built as a linear combination of the existing factors:
+/// - Keys pressed
+/// - Mouse clicks
+/// - Scroll ticks (scaled to 100s)
+/// - Mouse distance (scaled to 1000s of pixels)
+///
+/// All weights are user-configurable and can be positive, zero, or negative.
+struct KUIConfig: Codable, Equatable {
+    var keysWeight: Double
+    var clicksWeight: Double
+    var scrollTicksWeight: Double
+    var mouseDistanceWeight: Double
+    
+    /// Recommended default configuration: treat all inputs as equally important.
+    static let `default` = KUIConfig(
+        keysWeight: 1.0,
+        clicksWeight: 1.0,
+        scrollTicksWeight: 1.0,
+        mouseDistanceWeight: 1.0
+    )
+    
+    /// Apply this configuration to aggregated metrics to compute a KUI value.
+    ///
+    /// Scaling matches the units shown in the dashboard tiles:
+    /// - Scroll ticks are counted in 100s
+    /// - Mouse distance is counted in 1000s of pixels
+    func apply(to metrics: AggregatedMetrics) -> Double {
+        let keysTerm = keysWeight * Double(metrics.keyPressCount)
+        let clicksTerm = clicksWeight * Double(metrics.mouseClickCount)
+        let scrollTerm = scrollTicksWeight * (Double(metrics.scrollTicks) / 100.0)
+        let mouseTerm = mouseDistanceWeight * (metrics.mouseDistance / 1000.0)
+        
+        return keysTerm + clicksTerm + scrollTerm + mouseTerm
+    }
+}
+
 /// A single data point in a time series chart.
 struct TimeSeriesDataPoint: Identifiable {
     let id = UUID()
