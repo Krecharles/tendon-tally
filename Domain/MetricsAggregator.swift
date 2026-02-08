@@ -6,8 +6,8 @@ import os.log
 /// This class manages the rolling window system, periodically finalizing completed windows
 /// and starting new ones. It also handles persistence of historical data.
 final class MetricsAggregator {
-    private let eventTapManager = EventTapManager()
-    private let persistence = PersistenceController.shared
+    private var eventTapManager: EventTapping
+    private let persistence: MetricsPersisting
     private let logger = Logger(subsystem: "com.tendontally", category: "MetricsAggregator")
 
     private let windowLength: TimeInterval = 5 * 60
@@ -28,7 +28,13 @@ final class MetricsAggregator {
         set { eventTapManager.onPermissionOrTapFailure = newValue }
     }
 
-    init(now: Date = Date()) {
+    init(
+        eventTapManager: EventTapping = EventTapManager(),
+        persistence: MetricsPersisting = PersistenceController.shared,
+        now: Date = Date()
+    ) {
+        self.eventTapManager = eventTapManager
+        self.persistence = persistence
         // Load persisted history and current sample if valid.
         let (stored, savedCurrent) = persistence.loadSamples()
         // Keep newest first for convenience.
@@ -172,7 +178,7 @@ final class MetricsAggregator {
             keyPressCount: raw.keyPressCount,
             mouseClickCount: raw.mouseClickCount,
             scrollTicks: raw.scrollTicks,
-            scrollDistance: raw.scrollDistance,
+            scrollDistance: 0, // deprecated field, kept for Codable backward compat
             mouseDistance: raw.mouseDistance
         )
         pushUpdate()

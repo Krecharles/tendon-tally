@@ -1,3 +1,8 @@
 .build
 .vscode
 .xcode-build
+.DS_Store
+._*
+.swiftpm/
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/

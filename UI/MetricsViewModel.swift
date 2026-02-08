@@ -10,24 +10,22 @@ final class MetricsViewModel: ObservableObject {
     @Published var permissionIssueMessage: String?
     @Published var selectedTimeFrame: TimeFrame {
         didSet {
-            UserDefaults.standard.set(selectedTimeFrame.rawValue, forKey: "selectedTimeFrame")
+            AppPreferences.shared.selectedTimeFrame = selectedTimeFrame
         }
     }
-    @Published var timeFrameOffset: Int = 0 // 0 = current period, -1 = previous, -2 = before that, etc. (NOT persisted - always starts at 0)
+    @Published var timeFrameOffset: Int = 0
     @Published var activeMetricFilters: Set<MetricType> {
         didSet {
-            let filterStrings = activeMetricFilters.map { $0.rawValue }
-            UserDefaults.standard.set(filterStrings, forKey: "activeMetricFilters")
+            AppPreferences.shared.activeMetricFilters = activeMetricFilters
         }
     }
     @Published var kuiConfig: KUIConfig {
         didSet {
-            saveKUIConfig(kuiConfig)
+            AppPreferences.shared.kuiConfig = kuiConfig
         }
     }
 
     private let aggregator: MetricsAggregator
-    private let userDefaults = UserDefaults.standard
 
     init(aggregator: MetricsAggregator) {
         self.aggregator = aggregator
@@ -36,38 +34,17 @@ final class MetricsViewModel: ObservableObject {
             current: aggregator.currentSample,
             history: aggregator.history
         )
-        
-        // Load persisted preferences
-        if let savedTimeFrameString = userDefaults.string(forKey: "selectedTimeFrame"),
-           let savedTimeFrame = TimeFrame(rawValue: savedTimeFrameString) {
-            self.selectedTimeFrame = savedTimeFrame
-        } else {
-            self.selectedTimeFrame = .today
-        }
-        
-        if let savedFilterStrings = userDefaults.array(forKey: "activeMetricFilters") as? [String] {
-            let savedFilters = Set(savedFilterStrings.compactMap { MetricType(rawValue: $0) })
-            if !savedFilters.isEmpty {
-                self.activeMetricFilters = savedFilters
-            } else {
-                self.activeMetricFilters = Set(MetricType.individualMetrics + [.aggregate])
-            }
-        } else {
-            self.activeMetricFilters = Set(MetricType.individualMetrics + [.aggregate])
-        }
 
-        // Load KUI configuration (or use defaults).
-        if let loadedConfig = MetricsViewModel.loadKUIConfig() {
-            self.kuiConfig = loadedConfig
-        } else {
-            self.kuiConfig = .default
-        }
+        let prefs = AppPreferences.shared
+        self.selectedTimeFrame = prefs.selectedTimeFrame
+        self.activeMetricFilters = prefs.activeMetricFilters
+        self.kuiConfig = prefs.kuiConfig
 
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in
                 guard let self else { return }
                 self.currentSample = current
-                self.recentHistory = Array(history.prefix(12)) // up to 1 hour of 5‑min windows
+                self.recentHistory = Array(history.prefix(12))
                 self.todayTotals = MetricsViewModel.computeTodayTotals(current: current, history: history)
             }
         }
@@ -76,28 +53,6 @@ final class MetricsViewModel: ObservableObject {
             Task { @MainActor in
                 self?.permissionIssueMessage = message
             }
-        }
-    }
-
-    // MARK: - KUI Persistence
-
-    private static let kuiConfigKey = "kuiConfig"
-
-    private static func loadKUIConfig() -> KUIConfig? {
-        let defaults = UserDefaults.standard
-        if let data = defaults.data(forKey: kuiConfigKey) {
-            let decoder = JSONDecoder()
-            if let config = try? decoder.decode(KUIConfig.self, from: data) {
-                return config
-            }
-        }
-        return nil
-    }
-
-    private func saveKUIConfig(_ config: KUIConfig) {
-        let encoder = JSONEncoder()
-        if let data = try? encoder.encode(config) {
-            userDefaults.set(data, forKey: MetricsViewModel.kuiConfigKey)
         }
     }
 
@@ -111,7 +66,6 @@ final class MetricsViewModel: ObservableObject {
         var totalScrollTicks = 0
         var totalMouseDistance = 0.0
 
-        // Include finalized windows from today.
         for sample in history where sample.start >= startOfDay {
             totalKeys += sample.keyPressCount
             totalClicks += sample.mouseClickCount
@@ -119,7 +73,6 @@ final class MetricsViewModel: ObservableObject {
             totalMouseDistance += sample.mouseDistance
         }
 
-        // Include the current in‑progress window if it's from today.
         if current.start >= startOfDay {
             totalKeys += current.keyPressCount
             totalClicks += current.mouseClickCount
@@ -134,22 +87,21 @@ final class MetricsViewModel: ObservableObject {
             keyPressCount: totalKeys,
             mouseClickCount: totalClicks,
             scrollTicks: totalScrollTicks,
-            scrollDistance: 0, // not used anymore
+            scrollDistance: 0,
             mouseDistance: totalMouseDistance
         )
     }
-    
+
     func todayMetrics() -> AggregatedMetrics {
-        // Always return today's metrics, independent of selected time frame
         let (startDate, endDate) = TimeFrame.today.dateRange(offset: 0)
         let now = Date()
         let allSamples = aggregator.history + [aggregator.currentSample]
-        
+
         var totalKeys = 0
         var totalClicks = 0
         var totalScrollTicks = 0
         var totalMouseDistance = 0.0
-        
+
         for sample in allSamples {
             let effectiveEnd = max(endDate, now)
             if sample.end >= startDate && sample.start <= effectiveEnd {
@@ -159,7 +111,7 @@ final class MetricsViewModel: ObservableObject {
                 totalMouseDistance += sample.mouseDistance
             }
         }
-        
+
         return AggregatedMetrics(
             keyPressCount: totalKeys,
             mouseClickCount: totalClicks,
@@ -167,49 +119,40 @@ final class MetricsViewModel: ObservableObject {
             mouseDistance: totalMouseDistance
         )
     }
-    
+
     func aggregatedMetrics(for timeFrame: TimeFrame, offset: Int, filters: Set<MetricType>) -> AggregatedMetrics {
         let (startDate, endDate) = timeFrame.dateRange(offset: offset)
         let now = Date()
-        
-        // For past periods, exclude current sample if it's not in that period
-        // For current period, include current sample
+
         let allSamples: [UsageSample]
         if offset == 0 {
             allSamples = aggregator.history + [aggregator.currentSample]
         } else {
-            // For past periods, only include finalized samples
             allSamples = aggregator.history
         }
-        
-        // Always calculate all metrics regardless of filters (for totals display)
+
         var totalKeys = 0
         var totalClicks = 0
         var totalScrollTicks = 0
         var totalMouseDistance = 0.0
-        
+
         for sample in allSamples {
-            // For past periods (offset < 0), strictly enforce the endDate boundary
-            // For current period (offset 0), include samples that overlap
             let sampleOverlaps: Bool
             if offset == 0 {
-                // Current period: include if sample overlaps with period
                 let effectiveEnd = max(endDate, now)
                 sampleOverlaps = sample.end >= startDate && sample.start <= effectiveEnd
             } else {
-                // Past period: sample must be within the period boundaries
                 sampleOverlaps = sample.start >= startDate && sample.end <= endDate
             }
-            
+
             if sampleOverlaps {
-                // Always sum all metrics for totals
                 totalKeys += sample.keyPressCount
                 totalClicks += sample.mouseClickCount
                 totalScrollTicks += sample.scrollTicks
                 totalMouseDistance += sample.mouseDistance
             }
         }
-        
+
         return AggregatedMetrics(
             keyPressCount: totalKeys,
             mouseClickCount: totalClicks,
@@ -217,17 +160,11 @@ final class MetricsViewModel: ObservableObject {
             mouseDistance: totalMouseDistance
         )
     }
-    
+
     func reloadHistory() {
         aggregator.reloadHistory()
     }
-    
-    /// Calculate time series data points for the chart.
-    /// - Parameters:
-    ///   - timeFrame: The time frame to aggregate
-    ///   - offset: Time frame offset (0 = current, -1 = previous, etc.)
-    ///   - filters: Active metric filters (not used in calculation, but kept for API consistency)
-    /// - Returns: Array of time series data points sorted by time
+
     func timeSeriesData(for timeFrame: TimeFrame, offset: Int, filters: Set<MetricType>) -> [TimeSeriesDataPoint] {
         return TimeSeriesCalculator.calculateTimeSeries(
             samples: aggregator.history,
@@ -237,4 +174,3 @@ final class MetricsViewModel: ObservableObject {
         )
     }
 }
-

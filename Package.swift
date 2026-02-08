@@ -21,7 +21,12 @@ let package = Package(
             exclude: [
                 "TendonTally/TendonTally/Assets.xcassets",
                 "TendonTally/TendonTally.xcodeproj",
-                "README.md"
+                "TendonTally/TendonTally/TendonTally.icon",
+                "README.md",
+                "CLAUDE.md",
+                "assets",
+                "run.sh",
+                "Tests"
             ],
             sources: [
                 // App entry point and status bar
@@ -34,6 +39,12 @@ let package = Package(
                 "Domain/PersistenceController.swift",
                 "Domain/SettingsManager.swift",
                 "Domain/TimeSeriesCalculator.swift",
+                // Domain protocols
+                "Domain/Protocols/EventTapping.swift",
+                "Domain/Protocols/MetricsPersisting.swift",
+                "Domain/Protocols/MetricsAggregating.swift",
+                // Domain state
+                "Domain/AppPreferences.swift",
                 // Models
                 "Models/UsageSample.swift",
                 "Models/RawActivitySnapshot.swift",
@@ -43,13 +54,34 @@ let package = Package(
                 "UI/DashboardView.swift",
                 "UI/FullDashboardView.swift",
                 "UI/SettingsView.swift",
-                "UI/BarChartView.swift"
+                "UI/BarChartView.swift",
+                // UI - Extracted components
+                "UI/Components/MetricTile.swift",
+                "UI/Components/PermissionBanner.swift",
+                "UI/Components/SidebarButton.swift",
+                "UI/Components/MetricPill.swift",
+                "UI/Components/KUIWeightRow.swift",
+                // UI - Tab views
+                "UI/Tabs/TodayTabView.swift",
+                "UI/Tabs/HistoryTabView.swift",
+                "UI/Tabs/KUITabView.swift",
+                // UI - Extensions
+                "UI/Extensions/MetricType+Color.swift"
             ],
             linkerSettings: [
                 .linkedFramework("SwiftUI", .when(platforms: [.macOS])),
                 .linkedFramework("AppKit", .when(platforms: [.macOS])),
                 .linkedFramework("CoreGraphics", .when(platforms: [.macOS])),
                 .linkedFramework("ServiceManagement", .when(platforms: [.macOS]))
+            ]
+        ),
+        // Test target compiles needed source files directly
+        .testTarget(
+            name: "TendonTallyTests",
+            dependencies: [],
+            path: "Tests",
+            linkerSettings: [
+                .linkedFramework("CoreGraphics", .when(platforms: [.macOS]))
             ]
         )
     ]

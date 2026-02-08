@@ -15,23 +15,7 @@ struct BarChartView: View {
     let timeFrame: TimeFrame
     
     @State private var hoveredBarTime: Date?
-    
-    // Colors for each metric type
-    private func color(for metricType: MetricType) -> Color {
-        switch metricType {
-        case .keys:
-            return .blue
-        case .clicks:
-            return .red
-        case .scroll:
-            return .green
-        case .mouseDistance:
-            return .orange
-        case .aggregate:
-            return .purple
-        }
-    }
-    
+
     private var activeMetrics: [MetricType] {
         MetricType.individualMetrics.filter { filters.contains($0) }
     }
@@ -213,7 +197,7 @@ struct BarChartView: View {
     private func tooltipRow(metricType: MetricType, point: TimeSeriesDataPoint) -> some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(color(for: metricType))
+                .fill(metricType.color)
                 .frame(width: 8, height: 8)
             Text(metricType.rawValue)
                 .font(.caption2)
@@ -227,7 +211,7 @@ struct BarChartView: View {
     private func tooltipAggregateRow(point: TimeSeriesDataPoint) -> some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(color(for: .aggregate))
+                .fill(MetricType.aggregate.color)
                 .frame(width: 8, height: 8)
             Text("Total")
                 .font(.caption2)
@@ -252,10 +236,10 @@ struct BarChartView: View {
     private var chartColors: [Color] {
         var colors: [Color] = []
         for metric in activeMetrics {
-            colors.append(color(for: metric))
+            colors.append(metric.color)
         }
         if showAggregate {
-            colors.append(color(for: .aggregate))
+            colors.append(MetricType.aggregate.color)
         }
         return colors
     }
@@ -309,35 +293,5 @@ struct BarChartView: View {
             formatter.dateFormat = "MMM d"
             return formatter.string(from: date)
         }
-    }
-}
-
-struct LegendView: View {
-    let activeMetrics: [MetricType]
-    let showAggregate: Bool
-    let color: (MetricType) -> Color
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            ForEach(activeMetrics, id: \.self) { metricType in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(color(metricType))
-                        .frame(width: 8, height: 8)
-                    Text(metricType.rawValue)
-                        .font(.caption2)
-                }
-            }
-            if showAggregate {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(color(.aggregate))
-                        .frame(width: 8, height: 8)
-                    Text("Total")
-                        .font(.caption2)
-                }
-            }
-        }
-        .padding(.top, 8)
     }
 }

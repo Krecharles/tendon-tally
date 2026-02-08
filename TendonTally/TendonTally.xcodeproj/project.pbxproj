@@ -23,6 +23,19 @@
 		2BFFFF202F2D000000000004 /* RawActivitySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BFFFF102F2D000000000001 /* RawActivitySnapshot.swift */; };
 		2BFFFF212F2D000000000005 /* MetricTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BFFFF112F2D000000000002 /* MetricTypes.swift */; };
 		2BFFFF222F2D000000000006 /* TimeSeriesCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BFFFF122F2D000000000003 /* TimeSeriesCalculator.swift */; };
+		AA000001AAAA000000000001 /* EventTapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000010 /* EventTapping.swift */; };
+		AA000001AAAA000000000002 /* MetricsPersisting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000011 /* MetricsPersisting.swift */; };
+		AA000001AAAA000000000003 /* MetricsAggregating.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000012 /* MetricsAggregating.swift */; };
+		AA000001AAAA000000000004 /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000013 /* AppPreferences.swift */; };
+		AA000001AAAA000000000005 /* MetricTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000014 /* MetricTile.swift */; };
+		AA000001AAAA000000000006 /* PermissionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000015 /* PermissionBanner.swift */; };
+		AA000001AAAA000000000007 /* SidebarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000016 /* SidebarButton.swift */; };
+		AA000001AAAA000000000008 /* MetricPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000017 /* MetricPill.swift */; };
+		AA000001AAAA000000000009 /* KUIWeightRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000018 /* KUIWeightRow.swift */; };
+		AA000001AAAA00000000000A /* TodayTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000019 /* TodayTabView.swift */; };
+		AA000001AAAA00000000000B /* HistoryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001A /* HistoryTabView.swift */; };
+		AA000001AAAA00000000000C /* KUITabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001B /* KUITabView.swift */; };
+		AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001C /* MetricType+Color.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +56,19 @@
 		2BFFFF102F2D000000000001 /* RawActivitySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RawActivitySnapshot.swift; path = ../Models/RawActivitySnapshot.swift; sourceTree = SOURCE_ROOT; };
 		2BFFFF112F2D000000000002 /* MetricTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MetricTypes.swift; path = ../Models/MetricTypes.swift; sourceTree = SOURCE_ROOT; };
 		2BFFFF122F2D000000000003 /* TimeSeriesCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TimeSeriesCalculator.swift; path = ../Domain/TimeSeriesCalculator.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000010 /* EventTapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventTapping.swift; path = ../Domain/Protocols/EventTapping.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000011 /* MetricsPersisting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MetricsPersisting.swift; path = ../Domain/Protocols/MetricsPersisting.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000012 /* MetricsAggregating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MetricsAggregating.swift; path = ../Domain/Protocols/MetricsAggregating.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000013 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppPreferences.swift; path = ../Domain/AppPreferences.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000014 /* MetricTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MetricTile.swift; path = ../UI/Components/MetricTile.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000015 /* PermissionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PermissionBanner.swift; path = ../UI/Components/PermissionBanner.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000016 /* SidebarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SidebarButton.swift; path = ../UI/Components/SidebarButton.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000017 /* MetricPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MetricPill.swift; path = ../UI/Components/MetricPill.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000018 /* KUIWeightRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KUIWeightRow.swift; path = ../UI/Components/KUIWeightRow.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000019 /* TodayTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TodayTabView.swift; path = ../UI/Tabs/TodayTabView.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA00000000001A /* HistoryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryTabView.swift; path = ../UI/Tabs/HistoryTabView.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA00000000001B /* KUITabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KUITabView.swift; path = ../UI/Tabs/KUITabView.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA00000000001C /* MetricType+Color.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MetricType+Color.swift"; path = "../UI/Extensions/MetricType+Color.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -84,22 +110,35 @@
 		2B3B57702F2A30000001626F /* TrackerCore */ = {
 			isa = PBXGroup;
 			children = (
-				2B956A262F2CD520004692F2 /* SettingsManager.swift */,
-				2BFFFF102F2D000000000001 /* RawActivitySnapshot.swift */,
-				2BFFFF112F2D000000000002 /* MetricTypes.swift */,
 				2B3B57622F2A30000001626F /* ../App/MainApp.swift */,
 				2B3B57632F2A30000001626F /* ../App/StatusItemController.swift */,
+				2B956A302F2CD827004692F2 /* AppState.swift */,
 				2B3B57642F2A30000001626F /* ../Domain/EventTapManager.swift */,
 				2B3B57652F2A30000001626F /* ../Domain/MetricsAggregator.swift */,
-				2B3B57662F2A30000001626F /* UsageSample.swift */,
+				2B956A282F2CD546004692F2 /* PersistenceController.swift */,
+				2B956A262F2CD520004692F2 /* SettingsManager.swift */,
 				2BFFFF122F2D000000000003 /* TimeSeriesCalculator.swift */,
+				AA000001AAAA000000000010 /* EventTapping.swift */,
+				AA000001AAAA000000000011 /* MetricsPersisting.swift */,
+				AA000001AAAA000000000012 /* MetricsAggregating.swift */,
+				AA000001AAAA000000000013 /* AppPreferences.swift */,
+				2B3B57662F2A30000001626F /* UsageSample.swift */,
+				2BFFFF102F2D000000000001 /* RawActivitySnapshot.swift */,
+				2BFFFF112F2D000000000002 /* MetricTypes.swift */,
 				2B3B57672F2A30000001626F /* ../UI/MetricsViewModel.swift */,
 				2B3B57682F2A30000001626F /* ../UI/DashboardView.swift */,
-				2B956A282F2CD546004692F2 /* PersistenceController.swift */,
 				2B956A2A2F2CD569004692F2 /* MainTabView.swift */,
 				2B956A2B2F2CD569004692F2 /* SettingsView.swift */,
-				2B956A302F2CD827004692F2 /* AppState.swift */,
 				2B956A322F2CD9CF004692F2 /* BarChartView.swift */,
+				AA000001AAAA000000000014 /* MetricTile.swift */,
+				AA000001AAAA000000000015 /* PermissionBanner.swift */,
+				AA000001AAAA000000000016 /* SidebarButton.swift */,
+				AA000001AAAA000000000017 /* MetricPill.swift */,
+				AA000001AAAA000000000018 /* KUIWeightRow.swift */,
+				AA000001AAAA000000000019 /* TodayTabView.swift */,
+				AA000001AAAA00000000001A /* HistoryTabView.swift */,
+				AA000001AAAA00000000001B /* KUITabView.swift */,
+				AA000001AAAA00000000001C /* MetricType+Color.swift */,
 			);
 			name = TrackerCore;
 			sourceTree = "<group>";
@@ -194,6 +233,19 @@
 				2B3B576F2F2A30000001626F /* ../UI/DashboardView.swift in Sources */,
 				2B956A272F2CD520004692F2 /* SettingsManager.swift in Sources */,
 				2B956A332F2CD9CF004692F2 /* BarChartView.swift in Sources */,
+				AA000001AAAA000000000001 /* EventTapping.swift in Sources */,
+				AA000001AAAA000000000002 /* MetricsPersisting.swift in Sources */,
+				AA000001AAAA000000000003 /* MetricsAggregating.swift in Sources */,
+				AA000001AAAA000000000004 /* AppPreferences.swift in Sources */,
+				AA000001AAAA000000000005 /* MetricTile.swift in Sources */,
+				AA000001AAAA000000000006 /* PermissionBanner.swift in Sources */,
+				AA000001AAAA000000000007 /* SidebarButton.swift in Sources */,
+				AA000001AAAA000000000008 /* MetricPill.swift in Sources */,
+				AA000001AAAA000000000009 /* KUIWeightRow.swift in Sources */,
+				AA000001AAAA00000000000A /* TodayTabView.swift in Sources */,
+				AA000001AAAA00000000000B /* HistoryTabView.swift in Sources */,
+				AA000001AAAA00000000000C /* KUITabView.swift in Sources */,
+				AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
