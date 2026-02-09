@@ -10,7 +10,7 @@ final class MetricsAggregator {
     private let persistence: MetricsPersisting
     private let logger = Logger(subsystem: "com.tendontally", category: "MetricsAggregator")
 
-    private let windowLength: TimeInterval = 5 * 60
+    private let windowLength: TimeInterval = 1 * 60
     private var windowStart: Date = Date()
 
     private(set) var currentSample: UsageSample

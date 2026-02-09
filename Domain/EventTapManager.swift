@@ -1,5 +1,6 @@
 import Foundation
 import Cocoa
+import os.log
 
 /// Monitors keyboard and mouse events system-wide using NSEvent monitors.
 ///
@@ -23,6 +24,7 @@ final class EventTapManager {
     /// Called on the main thread when event monitoring is successfully started.
     var onPermissionGranted: (() -> Void)?
 
+    private let logger = Logger(subsystem: "com.tendontally", category: "EventTapManager")
     private var retryTimer: Timer?
     private var hasRegisteredMonitors = false
 
@@ -49,6 +51,7 @@ final class EventTapManager {
 
         stopRetryTimer()
         hasRegisteredMonitors = true
+        logger.info("Registering NSEvent monitors...")
 
         // Key down — filter out auto-repeat so holding a key counts as one stroke
         let keyHandler: (NSEvent) -> NSEvent? = { [weak self] event in
@@ -139,17 +142,24 @@ final class EventTapManager {
             _ = handler(event)
         }) {
             globalMonitors.append(global)
+            logger.info("Global monitor registered for mask: \(mask.rawValue)")
+        } else {
+            logger.error("Failed to register global monitor for mask: \(mask.rawValue)")
         }
 
         // Local monitor: events in this app. Handler can return modified event.
         if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: handler) {
             localMonitors.append(local)
+            logger.info("Local monitor registered for mask: \(mask.rawValue)")
+        } else {
+            logger.error("Failed to register local monitor for mask: \(mask.rawValue)")
         }
     }
 
     private func checkAccessibilityPermission() -> Bool {
-        // AXIsProcessTrusted is the canonical way to check accessibility permission
-        return AXIsProcessTrusted()
+        let trusted = AXIsProcessTrusted()
+        logger.info("AXIsProcessTrusted: \(trusted)")
+        return trusted
     }
 
     private func startRetryTimer() {

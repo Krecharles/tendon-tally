@@ -127,7 +127,7 @@ struct SettingsView: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    Text("All data stays on your Mac. Only counts and distances are stored, never which keys you press.")
+                    Text("Keystroke and mouse data stays on your Mac. Only counts and distances are stored, never which keys you press.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
