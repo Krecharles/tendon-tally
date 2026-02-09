@@ -41,12 +41,18 @@ final class SettingsManager {
     
     func setShowInDock(_ enabled: Bool) {
         userDefaults.set(enabled, forKey: showInDockKey)
-        
+
         // Set activation policy based on preference
         if enabled {
             NSApp.setActivationPolicy(.regular)
         } else {
             NSApp.setActivationPolicy(.accessory)
+        }
+
+        // Re-activate the app so the current window stays visible and focused
+        // (changing activation policy can cause macOS to deactivate the app)
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 }

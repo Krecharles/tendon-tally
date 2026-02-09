@@ -59,6 +59,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemController?.tearDown()
     }
     
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // Menu bar apps should keep running when the window is closed
+        return false
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         // If there are no visible windows, activate the app
         // The Window scene will be opened by SwiftUI automatically
