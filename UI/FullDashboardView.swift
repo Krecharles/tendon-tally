@@ -119,16 +119,6 @@ struct FullDashboardView: View {
                 }
 
                 SidebarButton(
-                    title: "Settings",
-                    icon: "gearshape.fill",
-                    isSelected: selectedTab == .settings
-                ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTabRawValue = Tab.settings.rawValue
-                    }
-                }
-
-                SidebarButton(
                     title: "KUI",
                     icon: "function",
                     isSelected: selectedTab == .kui
@@ -141,6 +131,24 @@ struct FullDashboardView: View {
             .padding(.horizontal, 12)
 
             Spacer()
+
+            VStack(spacing: 0) {
+                Divider()
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+
+                SidebarButton(
+                    title: "Settings",
+                    icon: "gearshape.fill",
+                    isSelected: selectedTab == .settings
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTabRawValue = Tab.settings.rawValue
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 16)
+            }
         }
         .frame(width: 220)
         .background(Color(NSColor.controlBackgroundColor))
