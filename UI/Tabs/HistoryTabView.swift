@@ -7,15 +7,21 @@ struct HistoryTabView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 headerSection
-                    .padding(.bottom, 24)
-
-                controlsCard
-
-                chartSection
                     .padding(.bottom, 20)
 
+                timeFrameSelector
+                    .padding(.bottom, 12)
+
+                dateNavigation
+                    .padding(.bottom, 20)
+
+                chartSection
+
+                metricFilters
+                    .padding(.top, 14)
+
                 unitsExplanation
-                    .padding(.top, 4)
+                    .padding(.top, 16)
             }
             .padding(24)
         }
@@ -23,154 +29,83 @@ struct HistoryTabView: View {
     }
 
     private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text("History")
-                .font(.system(size: 32, weight: .bold))
+        Text("History")
+            .font(.system(size: 28, weight: .bold))
+            .foregroundColor(.primary)
+    }
+
+    // MARK: - Time Frame Selector
+
+    private var timeFrameSelector: some View {
+        HStack(spacing: 2) {
+            ForEach(TimeFrame.allCases, id: \.self) { timeFrame in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        viewModel.selectedTimeFrame = timeFrame
+                        viewModel.timeFrameOffset = 0
+                    }
+                }) {
+                    Text(timeFrame.rawValue)
+                        .font(.system(size: 12, weight: viewModel.selectedTimeFrame == timeFrame ? .semibold : .regular))
+                        .foregroundColor(viewModel.selectedTimeFrame == timeFrame ? .primary : .secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(viewModel.selectedTimeFrame == timeFrame ? Color(NSColor.controlBackgroundColor) : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(NSColor.windowBackgroundColor).opacity(0.5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: - Date Navigation
+
+    private var dateNavigation: some View {
+        HStack(spacing: 8) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    viewModel.timeFrameOffset -= 1
+                }
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+
+            Text(dateRangeLabelText)
+                .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.primary)
 
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    viewModel.timeFrameOffset += 1
+                    if viewModel.timeFrameOffset > 0 {
+                        viewModel.timeFrameOffset = 0
+                    }
+                }
+            }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(viewModel.timeFrameOffset >= 0 ? .secondary.opacity(0.3) : .secondary)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.timeFrameOffset >= 0)
+
             Spacer()
-        }
-    }
-
-    private var controlsCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            GeometryReader { geometry in
-                HStack(alignment: .top, spacing: 20) {
-                    timeAndDateControls
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-                        .frame(height: geometry.size.height)
-
-                    metricFilterSection
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .frame(minHeight: 80)
-        }
-        .padding(.top, 16)
-        .padding(.trailing, 16)
-        .padding(.bottom, 16)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var metricFilterSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Metrics")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-                .frame(height: 14, alignment: .top)
-
-            LazyVGrid(columns: [
-                GridItem(.flexible(minimum: 60), spacing: 6),
-                GridItem(.flexible(minimum: 60), spacing: 6),
-                GridItem(.flexible(minimum: 60), spacing: 6)
-            ], alignment: .leading, spacing: 6) {
-                ForEach(MetricType.allCases, id: \.self) { metricType in
-                    MetricPill(
-                        title: metricType.rawValue,
-                        metricType: metricType,
-                        isSelected: viewModel.activeMetricFilters.contains(metricType)
-                    ) {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                            if viewModel.activeMetricFilters.contains(metricType) {
-                                viewModel.activeMetricFilters.remove(metricType)
-                            } else {
-                                viewModel.activeMetricFilters.insert(metricType)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var timeAndDateControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Time Period")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-                .frame(height: 14, alignment: .top)
-
-            VStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    ForEach(TimeFrame.allCases, id: \.self) { timeFrame in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                                viewModel.selectedTimeFrame = timeFrame
-                                viewModel.timeFrameOffset = 0
-                            }
-                        }) {
-                            Text(timeFrame.rawValue)
-                                .font(.system(size: 12, weight: viewModel.selectedTimeFrame == timeFrame ? .semibold : .regular))
-                                .foregroundColor(viewModel.selectedTimeFrame == timeFrame ? .white : .primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(viewModel.selectedTimeFrame == timeFrame ? Color.accentColor : Color(NSColor.windowBackgroundColor))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(viewModel.selectedTimeFrame == timeFrame ? Color.clear : Color(NSColor.separatorColor), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                            viewModel.timeFrameOffset -= 1
-                        }
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 28, height: 28)
-                            .background(Color(NSColor.windowBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Previous period")
-
-                    Text(dateRangeLabelText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(NSColor.windowBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-
-                    Button(action: {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                            viewModel.timeFrameOffset += 1
-                            if viewModel.timeFrameOffset > 0 {
-                                viewModel.timeFrameOffset = 0
-                            }
-                        }
-                    }) {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(viewModel.timeFrameOffset >= 0 ? .secondary : .primary)
-                            .frame(width: 28, height: 28)
-                            .background(Color(NSColor.windowBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.timeFrameOffset >= 0)
-                    .help("Next period")
-                }
-            }
         }
     }
 
@@ -200,11 +135,11 @@ struct HistoryTabView: View {
                 let startYear = calendar.component(.year, from: startDate)
                 let endYear = calendar.component(.year, from: endDate)
                 if startYear == endYear {
-                    return "\(startStr) - \(endStr)"
+                    return "\(startStr) \u{2013} \(endStr)"
                 } else {
                     formatter.dateFormat = "MMM d, yyyy"
                     let endStrWithYear = formatter.string(from: endDate)
-                    return "\(startStr) - \(endStrWithYear)"
+                    return "\(startStr) \u{2013} \(endStrWithYear)"
                 }
             case .lastMonth:
                 formatter.dateFormat = "MMMM yyyy"
@@ -213,45 +148,54 @@ struct HistoryTabView: View {
         }
     }
 
-    private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            chartContainer
-        }
-    }
+    // MARK: - Chart
 
-    private var chartContainer: some View {
+    private var chartSection: some View {
         let dataPoints = viewModel.timeSeriesData(
             for: viewModel.selectedTimeFrame,
             offset: viewModel.timeFrameOffset,
             filters: viewModel.activeMetricFilters
         )
 
-        return VStack(alignment: .leading, spacing: 0) {
-            GeometryReader { geometry in
-                let availableWidth = geometry.size.width
-
-                BarChartView(
-                    dataPoints: dataPoints,
-                    filters: viewModel.activeMetricFilters,
-                    timeFrame: viewModel.selectedTimeFrame,
-                    kuiConfig: viewModel.kuiConfig
-                )
-                .frame(
-                    width: availableWidth,
-                    height: 400
-                )
-                .padding(.vertical, 20)
-            }
-            .frame(height: 440)
-        }
+        return BarChartView(
+            dataPoints: dataPoints,
+            filters: viewModel.activeMetricFilters,
+            timeFrame: viewModel.selectedTimeFrame,
+            kuiConfig: viewModel.kuiConfig
+        )
+        .frame(height: 340)
+        .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
+    // MARK: - Metric Filters
+
+    private var metricFilters: some View {
+        HStack(spacing: 6) {
+            ForEach(MetricType.allCases, id: \.self) { metricType in
+                MetricPill(
+                    title: metricType.rawValue,
+                    metricType: metricType,
+                    isSelected: viewModel.activeMetricFilters.contains(metricType)
+                ) {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        if viewModel.activeMetricFilters.contains(metricType) {
+                            viewModel.activeMetricFilters.remove(metricType)
+                        } else {
+                            viewModel.activeMetricFilters.insert(metricType)
+                        }
+                    }
+                }
+            }
+
+            Spacer()
+        }
+    }
+
     private var unitsExplanation: some View {
-        Text("Units are scaled so typical values are of a similar magnitude for an average user (scroll ticks in 100s, mouse distance in 1000s of pixels). KUI uses your configured weights from the KUI tab.")
-            .font(.caption2)
+        Text("Scroll ticks in 100s, mouse distance in 1000s of pixels. KUI uses weights from the KUI tab.")
+            .font(.system(size: 11))
             .foregroundColor(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 }

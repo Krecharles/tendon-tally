@@ -99,12 +99,7 @@ struct BarChartView: View {
                 chartView
             }
         }
-        .padding(.top, 12)
-        .padding(.leading, 12)
-        .padding(.trailing, 12)
-        .padding(.bottom, 12)
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(8)
+        .padding(4)
     }
     
     private var chartView: some View {

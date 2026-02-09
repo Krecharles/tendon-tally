@@ -19,7 +19,6 @@ let package = Package(
             dependencies: [],
             path: ".",
             exclude: [
-                "TendonTally/TendonTally/Assets.xcassets",
                 "TendonTally/TendonTally.xcodeproj",
                 "TendonTally/TendonTally/TendonTally.icon",
                 "README.md",
@@ -68,6 +67,9 @@ let package = Package(
                 "UI/Tabs/PermissionsTabView.swift",
                 // UI - Extensions
                 "UI/Extensions/MetricType+Color.swift"
+            ],
+            resources: [
+                .process("TendonTally/TendonTally/Assets.xcassets")
             ],
             linkerSettings: [
                 .linkedFramework("SwiftUI", .when(platforms: [.macOS])),

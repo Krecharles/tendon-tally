@@ -6,69 +6,94 @@ struct DashboardView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
                 Image("app-icon")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 24, height: 24)
-                Text("Today's usage")
-                    .font(.system(size: 20, weight: .bold))
+                    .frame(width: 22, height: 22)
+                Text("TendonTally")
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary)
+
+                Spacer()
+
+                Text("Today")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
 
-            todayTotalsSection
+            metricsGrid
 
             if let message = viewModel.permissionIssueMessage {
                 PermissionBanner(message: message)
             }
 
-            openDashboardButton
-        }
-        .padding(24)
-        .frame(width: 400)
-    }
-
-    private var todayTotalsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
-                GridRow {
-                    MetricTile(title: "Keys", value: viewModel.todayTotals.keyPressCount, icon: "keyboard.fill", color: .blue)
-                    MetricTile(title: "Clicks", value: viewModel.todayTotals.mouseClickCount, icon: "cursorarrow.click", color: .red)
-                }
-                GridRow {
-                    MetricTile(title: "Scroll ticks", value: viewModel.todayTotals.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
-                    MetricTile(title: "Mouse pixels", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
-                }
-                GridRow {
-                    let kui = viewModel.kuiConfig.apply(to: AggregatedMetrics(
-                        keyPressCount: viewModel.todayTotals.keyPressCount,
-                        mouseClickCount: viewModel.todayTotals.mouseClickCount,
-                        scrollTicks: viewModel.todayTotals.scrollTicks,
-                        mouseDistance: viewModel.todayTotals.mouseDistance
-                    ))
-                    MetricTile(title: "KUI", value: Int(kui), icon: "chart.bar.fill", color: .purple)
-                    Rectangle().fill(Color.clear).frame(height: 0)
-                }
-            }
-        }
-    }
-
-    private var openDashboardButton: some View {
-        Button(action: openDashboard) {
-            HStack {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 12))
+            Button(action: openDashboard) {
                 Text("Open Dashboard")
-                    .font(.subheadline)
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .foregroundColor(.accentColor)
+                    .background(Color.accentColor.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
+                    )
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(8)
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .padding(16)
+        .frame(width: 340)
+    }
+
+    private var metricsGrid: some View {
+        let kui = viewModel.kuiConfig.apply(to: AggregatedMetrics(
+            keyPressCount: viewModel.todayTotals.keyPressCount,
+            mouseClickCount: viewModel.todayTotals.mouseClickCount,
+            scrollTicks: viewModel.todayTotals.scrollTicks,
+            mouseDistance: viewModel.todayTotals.mouseDistance
+        ))
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                popoverTile(title: "Keys", value: viewModel.todayTotals.keyPressCount, icon: "keyboard.fill", color: .blue)
+                popoverTile(title: "Clicks", value: viewModel.todayTotals.mouseClickCount, icon: "cursorarrow.click", color: .red)
+            }
+            HStack(spacing: 8) {
+                popoverTile(title: "Scroll", value: viewModel.todayTotals.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
+                popoverTile(title: "Mouse", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
+            }
+            HStack(spacing: 8) {
+                popoverTile(title: "KUI", value: Int(kui), icon: "chart.bar.fill", color: .purple)
+            }
+        }
+    }
+
+    private func popoverTile(title: String, value: Int, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11))
+                    .foregroundColor(color)
+                    .frame(width: 22, height: 22)
+                    .background(color.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Text(title)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            Text("\(value)")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func openDashboard() {
