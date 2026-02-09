@@ -46,15 +46,6 @@ struct SettingsView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 
-                HStack(spacing: 8) {
-                    Button(action: {
-                        PersistenceController.shared.generateTestData()
-                        viewModel?.reloadHistory()
-                    }) {
-                        Text("Generate Test Data")
-                    }
-                    .buttonStyle(.bordered)
-                    
                     Button(action: {
                         showDeleteConfirmation = true
                     }) {
@@ -75,11 +66,6 @@ struct SettingsView: View {
                     } message: {
                         Text("This will permanently delete all stored usage data. This action cannot be undone.")
                     }
-                }
-                
-                Text("Test data includes 5-minute intervals for the last 4 days")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
                 }
                 
                 Divider()
