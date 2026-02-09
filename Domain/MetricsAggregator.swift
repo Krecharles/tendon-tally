@@ -41,18 +41,40 @@ final class MetricsAggregator {
     ) {
         self.eventTapManager = eventTapManager
         self.persistence = persistence
-        // Load persisted history and current sample if valid.
+
         let (stored, savedCurrent) = persistence.loadSamples()
-        // Keep newest first for convenience.
         self.history = stored.sorted { $0.start > $1.start }
         logger.info("Initialized with \(self.history.count) historical samples")
 
-        // If we have a valid saved current sample, use it; otherwise start fresh.
-        if let saved = savedCurrent, saved.end > now {
-            self.currentSample = saved
-            self.windowStart = saved.start
-            let formatter = ISO8601DateFormatter()
-            logger.info("Restored current sample from \(formatter.string(from: saved.start)) with \(saved.keyPressCount) keys, \(saved.mouseClickCount) clicks")
+        if let saved = savedCurrent {
+            if saved.end > now {
+                // Window is still active — resume it.
+                self.currentSample = saved
+                self.windowStart = saved.start
+                let formatter = ISO8601DateFormatter()
+                logger.info("Restored current sample from \(formatter.string(from: saved.start)) with \(saved.keyPressCount) keys, \(saved.mouseClickCount) clicks")
+            } else {
+                // Window has expired — finalize it into history so no data is lost.
+                self.history.insert(saved, at: 0)
+                persistence.saveFinalizedSampleSync(saved)
+                persistence.deleteCurrentSample()
+                let formatter = ISO8601DateFormatter()
+                logger.info("Finalized expired restored sample from \(formatter.string(from: saved.start)) with \(saved.keyPressCount) keys, \(saved.mouseClickCount) clicks")
+
+                // Start a fresh window.
+                let end = now.addingTimeInterval(windowLength)
+                self.currentSample = UsageSample(
+                    id: UUID(),
+                    start: now,
+                    end: end,
+                    keyPressCount: 0,
+                    mouseClickCount: 0,
+                    scrollTicks: 0,
+                    scrollDistance: 0,
+                    mouseDistance: 0
+                )
+                self.windowStart = now
+            }
         } else {
             let end = now.addingTimeInterval(windowLength)
             self.currentSample = UsageSample(
@@ -86,16 +108,19 @@ final class MetricsAggregator {
         saveTimer?.invalidate()
         saveTimer = nil
         eventTapManager.stop()
-        // Persist current sample
-        persistence.saveCurrentSample(self.currentSample)
+
+        // Refresh from the latest event counts before saving.
+        refreshCurrentSample(end: currentSample.end)
+
+        // Synchronous save so the write completes before the process exits.
+        persistence.saveCurrentSampleSync(self.currentSample)
         logger.info("Final save completed: \(self.history.count) samples, current sample has \(self.currentSample.keyPressCount) keys, \(self.currentSample.mouseClickCount) clicks")
     }
-    
+
     /// Reload history from persistence (useful after data deletion).
     func reloadHistory() {
         let (stored, savedCurrent) = persistence.loadSamples()
         self.history = stored.sorted { $0.start > $1.start }
-        // Only restore current sample if it's still valid
         if let saved = savedCurrent, saved.end > Date() {
             self.currentSample = saved
             self.windowStart = saved.start
@@ -111,19 +136,16 @@ final class MetricsAggregator {
         }
         RunLoop.main.add(timer!, forMode: .common)
     }
-    
+
     private func startSaveTimer() {
-        // Save current sample every 10 seconds
         saveTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             self?.saveCurrentSample()
         }
         RunLoop.main.add(saveTimer!, forMode: .common)
     }
-    
+
     private func saveCurrentSample() {
-        // Refresh current sample before saving
         refreshCurrentSample(end: self.currentSample.end)
-        // Persist current sample only (finalized samples are saved separately)
         persistence.saveCurrentSample(self.currentSample)
         logger.debug("Periodic save: current sample has \(self.currentSample.keyPressCount) keys, \(self.currentSample.mouseClickCount) clicks, \(self.currentSample.scrollTicks) scroll ticks")
     }
@@ -133,7 +155,6 @@ final class MetricsAggregator {
         if now.timeIntervalSince(windowStart) >= windowLength {
             rollWindow(to: now)
         } else {
-            // Just refresh the current sample from the raw snapshot.
             refreshCurrentSample(end: currentSample.end)
         }
     }
@@ -141,22 +162,19 @@ final class MetricsAggregator {
     private func rollWindow(to now: Date) {
         // Finalize current window with now as the end time.
         refreshCurrentSample(end: now)
-        
-        let finalizedKeys = self.currentSample.keyPressCount
-        let finalizedClicks = self.currentSample.mouseClickCount
-        let finalizedScroll = self.currentSample.scrollTicks
 
         let finalizedSample = self.currentSample
         self.history.insert(finalizedSample, at: 0)
-        logger.info("Rolled window: finalized sample with \(finalizedKeys) keys, \(finalizedClicks) clicks, \(finalizedScroll) scroll ticks")
-        
-        // Save the finalized sample to its daily file
+        logger.info("Rolled window: finalized sample with \(finalizedSample.keyPressCount) keys, \(finalizedSample.mouseClickCount) clicks, \(finalizedSample.scrollTicks) scroll ticks")
+
         persistence.saveFinalizedSample(finalizedSample)
+
+        // Reset counters synchronously so the next snapshot reads zero.
+        eventTapManager.resetCounters()
 
         // Start a new window.
         self.windowStart = now
         let newEnd = now.addingTimeInterval(windowLength)
-        eventTapManager.resetCounters()
 
         self.currentSample = UsageSample(
             id: UUID(),
@@ -168,7 +186,6 @@ final class MetricsAggregator {
             scrollDistance: 0,
             mouseDistance: 0
         )
-        // Save the new current sample immediately
         persistence.saveCurrentSample(self.currentSample)
         let formatter = ISO8601DateFormatter()
         logger.info("Started new window at \(formatter.string(from: now))")
@@ -184,7 +201,7 @@ final class MetricsAggregator {
             keyPressCount: raw.keyPressCount,
             mouseClickCount: raw.mouseClickCount,
             scrollTicks: raw.scrollTicks,
-            scrollDistance: 0, // deprecated field, kept for Codable backward compat
+            scrollDistance: 0,
             mouseDistance: raw.mouseDistance
         )
         pushUpdate()
@@ -199,4 +216,3 @@ final class MetricsAggregator {
         }
     }
 }
-

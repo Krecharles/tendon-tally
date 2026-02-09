@@ -204,9 +204,10 @@ final class EventTapManager {
     }
 
     /// Reset the raw counters (used when rolling to a new window).
+    /// Synchronous so that the next snapshot() call reads zeroes.
     func resetCounters() {
-        queue.async { [weak self] in
-            self?._snapshot = RawActivitySnapshot()
+        queue.sync {
+            self._snapshot = RawActivitySnapshot()
         }
     }
 }
