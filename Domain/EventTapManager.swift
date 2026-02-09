@@ -1,18 +1,15 @@
 import Foundation
 import Cocoa
-import CoreGraphics
 
-/// Manages a global CGEvent tap and updates a RawActivitySnapshot as events arrive.
-/// 
-/// This class monitors keyboard and mouse events system-wide using CoreGraphics event taps.
-/// It tracks key presses, mouse clicks, scroll events, and mouse movement distance.
+/// Monitors keyboard and mouse events system-wide using NSEvent monitors.
+///
+/// Uses both global (other apps) and local (this app) monitors to track
+/// key presses, mouse clicks, scroll events, and mouse movement distance.
 /// All tracking is passive (listen-only) and does not record key contents, only counts.
-/// Inspired by OctoMouse's use of CGEventTap to track keyboard and mouse activity:
-/// https://github.com/KonsomeJona/OctoMouse
+/// Follows OctoMouse's approach: https://github.com/KonsomeJona/OctoMouse
 final class EventTapManager {
-    private let eventMask: CGEventMask
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    private var globalMonitors: [Any] = []
+    private var localMonitors: [Any] = []
 
     private let queue = DispatchQueue(label: "TendonTally.EventTapManager")
     private var lastMouseLocation: CGPoint?
@@ -20,79 +17,170 @@ final class EventTapManager {
     /// Current snapshot is updated on `queue` and read via `snapshot()` API.
     private var _snapshot = RawActivitySnapshot()
 
-    /// Called on the main thread when permissions appear to be missing or the tap is disabled by the system.
+    /// Called on the main thread when permissions appear to be missing.
     var onPermissionOrTapFailure: ((String) -> Void)?
 
-    init() {
-        var mask: CGEventMask = 0
-        func addMask(_ type: CGEventType) {
-            mask |= (1 << CGEventMask(type.rawValue))
-        }
-        addMask(.keyDown)
-        addMask(.leftMouseDown)
-        addMask(.rightMouseDown)
-        addMask(.otherMouseDown)
-        addMask(.scrollWheel)
-        addMask(.mouseMoved)
-        addMask(.leftMouseDragged)
-        addMask(.rightMouseDragged)
-        self.eventMask = mask
-    }
+    /// Called on the main thread when event monitoring is successfully started.
+    var onPermissionGranted: (() -> Void)?
 
-    /// Start the global event tap.
+    private var retryTimer: Timer?
+    private var hasRegisteredMonitors = false
+
+    /// Start monitoring events. If no events are received (permissions missing), retries periodically.
     func start() {
-        queue.async { [weak self] in
-            guard let self else { return }
-            if self.eventTap != nil { return }
-
-            let tap = CGEvent.tapCreate(
-                tap: .cgSessionEventTap,
-                place: .headInsertEventTap,
-                options: .listenOnly,
-                eventsOfInterest: self.eventMask,
-                callback: { proxy, type, event, refcon in
-                    guard let refcon else { return Unmanaged.passUnretained(event) }
-                    let unmanaged = Unmanaged<EventTapManager>.fromOpaque(refcon)
-                    let manager = unmanaged.takeUnretainedValue()
-                    return manager.handleEvent(proxy: proxy, type: type, event: event)
-                },
-                userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
-            )
-
-            guard let eventTap = tap else {
-                DispatchQueue.main.async {
-                    self.onPermissionOrTapFailure?("Unable to create event tap. Check Accessibility / Input Monitoring permissions.")
-                }
-                return
-            }
-
-            self.eventTap = eventTap
-            if let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0) {
-                self.runLoopSource = source
-                CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-                CGEvent.tapEnable(tap: eventTap, enable: true)
-            } else {
-                DispatchQueue.main.async {
-                    self.onPermissionOrTapFailure?("Unable to create run loop source for event tap.")
-                }
-            }
+        DispatchQueue.main.async { [weak self] in
+            self?.registerMonitors()
         }
     }
 
-    /// Stop and remove the event tap.
+    private func registerMonitors() {
+        guard !hasRegisteredMonitors else { return }
+
+        // Check if we can create an event tap as a permission probe.
+        // NSEvent global monitors silently fail without permissions,
+        // so we use a CGEvent tap check to detect missing permissions.
+        let hasPermission = checkAccessibilityPermission()
+
+        if !hasPermission {
+            onPermissionOrTapFailure?("Unable to monitor input events. Check Accessibility / Input Monitoring permissions.")
+            startRetryTimer()
+            return
+        }
+
+        stopRetryTimer()
+        hasRegisteredMonitors = true
+
+        // Key down — filter out auto-repeat so holding a key counts as one stroke
+        let keyHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            if !event.isARepeat {
+                self?.queue.async { self?._snapshot.keyPressCount += 1 }
+            }
+            return event
+        }
+        addMonitors(matching: .keyDown, handler: keyHandler)
+
+        // Mouse clicks
+        let leftClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            self?.queue.async { self?._snapshot.mouseClickCount += 1 }
+            return event
+        }
+        addMonitors(matching: .leftMouseDown, handler: leftClickHandler)
+
+        let rightClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            self?.queue.async { self?._snapshot.mouseClickCount += 1 }
+            return event
+        }
+        addMonitors(matching: .rightMouseDown, handler: rightClickHandler)
+
+        let otherClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            self?.queue.async { self?._snapshot.mouseClickCount += 1 }
+            return event
+        }
+        addMonitors(matching: .otherMouseDown, handler: otherClickHandler)
+
+        // Scroll wheel
+        let scrollHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            let deltaY = abs(event.scrollingDeltaY)
+            let magnitude: Int
+            if event.hasPreciseScrollingDeltas {
+                // Trackpad: convert pixel deltas to approximate ticks
+                magnitude = max(1, Int(deltaY / 10))
+            } else {
+                magnitude = Int(deltaY)
+            }
+            if magnitude > 0 {
+                self?.queue.async { self?._snapshot.scrollTicks += magnitude }
+            }
+            return event
+        }
+        addMonitors(matching: .scrollWheel, handler: scrollHandler)
+
+        // Mouse movement
+        let moveHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            let location = NSEvent.mouseLocation
+            self?.queue.async {
+                guard let self else { return }
+                if let last = self.lastMouseLocation {
+                    let dx = Double(location.x - last.x)
+                    let dy = Double(location.y - last.y)
+                    let distance = (dx * dx + dy * dy).squareRoot()
+                    self._snapshot.mouseDistance += distance
+                }
+                self.lastMouseLocation = location
+            }
+            return event
+        }
+        addMonitors(matching: .mouseMoved, handler: moveHandler)
+
+        // Mouse dragging (also counts as movement)
+        let dragHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            let location = NSEvent.mouseLocation
+            self?.queue.async {
+                guard let self else { return }
+                if let last = self.lastMouseLocation {
+                    let dx = Double(location.x - last.x)
+                    let dy = Double(location.y - last.y)
+                    let distance = (dx * dx + dy * dy).squareRoot()
+                    self._snapshot.mouseDistance += distance
+                }
+                self.lastMouseLocation = location
+            }
+            return event
+        }
+        addMonitors(matching: .leftMouseDragged, handler: dragHandler)
+        addMonitors(matching: .rightMouseDragged, handler: dragHandler)
+
+        onPermissionGranted?()
+    }
+
+    private func addMonitors(matching mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> NSEvent?) {
+        // Global monitor: events in other apps. Handler returns Void (can't modify events).
+        if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { event in
+            _ = handler(event)
+        }) {
+            globalMonitors.append(global)
+        }
+
+        // Local monitor: events in this app. Handler can return modified event.
+        if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: handler) {
+            localMonitors.append(local)
+        }
+    }
+
+    private func checkAccessibilityPermission() -> Bool {
+        // AXIsProcessTrusted is the canonical way to check accessibility permission
+        return AXIsProcessTrusted()
+    }
+
+    private func startRetryTimer() {
+        guard retryTimer == nil else { return }
+        retryTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            self?.registerMonitors()
+        }
+    }
+
+    private func stopRetryTimer() {
+        retryTimer?.invalidate()
+        retryTimer = nil
+    }
+
+    /// Stop and remove all event monitors.
     func stop() {
+        DispatchQueue.main.async { [weak self] in
+            self?.stopRetryTimer()
+        }
+        for monitor in globalMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        globalMonitors.removeAll()
+        for monitor in localMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        localMonitors.removeAll()
+        hasRegisteredMonitors = false
         queue.async { [weak self] in
-            guard let self else { return }
-            if let source = self.runLoopSource {
-                CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-                self.runLoopSource = nil
-            }
-            if let tap = self.eventTap {
-                CGEvent.tapEnable(tap: tap, enable: false)
-                self.eventTap = nil
-            }
-            self.lastMouseLocation = nil
-            self._snapshot = RawActivitySnapshot()
+            self?.lastMouseLocation = nil
+            self?._snapshot = RawActivitySnapshot()
         }
     }
 
@@ -111,57 +199,4 @@ final class EventTapManager {
             self?._snapshot = RawActivitySnapshot()
         }
     }
-
-    // MARK: - Event Handling
-
-    private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent> {
-        // If the event tap is disabled by the system (e.g. permissions changed), notify the UI.
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            DispatchQueue.main.async { [weak self] in
-                // Keep this message short; detailed instructions are shown in the UI banner.
-                self?.onPermissionOrTapFailure?("Event tap disabled by the system.")
-            }
-            // Re-enable the tap if possible.
-            if let tap = eventTap {
-                CGEvent.tapEnable(tap: tap, enable: true)
-            }
-            return Unmanaged.passUnretained(event)
-        }
-
-        queue.async { [weak self] in
-            guard let self else { return }
-            switch type {
-            case .keyDown:
-                self._snapshot.keyPressCount += 1
-
-            case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-                self._snapshot.mouseClickCount += 1
-
-            case .scrollWheel:
-                // Only count scroll ticks; ignore pixel-based distance.
-                let deltaY = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
-                let magnitude = abs(deltaY)
-                if magnitude > 0 {
-                    self._snapshot.scrollTicks += Int(magnitude)
-                }
-
-            case .mouseMoved, .leftMouseDragged, .rightMouseDragged:
-                let location = event.location
-                if let last = self.lastMouseLocation {
-                    let dx = Double(location.x - last.x)
-                    let dy = Double(location.y - last.y)
-                    let distance = (dx * dx + dy * dy).squareRoot()
-                    self._snapshot.mouseDistance += distance
-                }
-                self.lastMouseLocation = location
-
-            default:
-                break
-            }
-        }
-
-        // We are a passive listener (listenOnly), so return the original event unmodified.
-        return Unmanaged.passUnretained(event)
-    }
 }
-

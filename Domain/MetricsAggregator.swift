@@ -28,6 +28,12 @@ final class MetricsAggregator {
         set { eventTapManager.onPermissionOrTapFailure = newValue }
     }
 
+    /// Called when the event tap is successfully created (permissions granted).
+    var onPermissionGranted: (() -> Void)? {
+        get { eventTapManager.onPermissionGranted }
+        set { eventTapManager.onPermissionGranted = newValue }
+    }
+
     init(
         eventTapManager: EventTapping = EventTapManager(),
         persistence: MetricsPersisting = PersistenceController.shared,

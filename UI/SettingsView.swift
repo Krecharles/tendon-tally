@@ -39,6 +39,41 @@ struct SettingsView: View {
 
                 // Data
                 settingsCard(title: "Data") {
+                    VStack(spacing: 0) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Open Data Folder")
+                                .font(.system(size: 13))
+                                .foregroundColor(.primary)
+                            Text("View stored usage files in Finder")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            NSWorkspace.shared.open(PersistenceController.shared.dataDirectory)
+                        }) {
+                            Text("Open")
+                                .font(.system(size: 12, weight: .medium))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(Color(NSColor.controlBackgroundColor))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+
+                    Divider()
+                        .padding(.leading, 14)
+
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Delete All Data")
@@ -83,6 +118,7 @@ struct SettingsView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
+                    }
                 }
 
                 // Privacy

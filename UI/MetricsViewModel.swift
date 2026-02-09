@@ -54,6 +54,12 @@ final class MetricsViewModel: ObservableObject {
                 self?.permissionIssueMessage = message
             }
         }
+
+        aggregator.onPermissionGranted = { [weak self] in
+            Task { @MainActor in
+                self?.permissionIssueMessage = nil
+            }
+        }
     }
 
     private static func computeTodayTotals(current: UsageSample, history: [UsageSample]) -> UsageSample {

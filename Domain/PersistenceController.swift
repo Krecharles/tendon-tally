@@ -10,7 +10,7 @@ final class PersistenceController {
     
     private let logger = Logger(subsystem: "com.tendontally", category: "Persistence")
 
-    private let dataDirectory: URL
+    private(set) var dataDirectory: URL
     private let queue = DispatchQueue(label: "TendonTally.Persistence")
     
     private let dateFormatter: DateFormatter = {
@@ -20,15 +20,11 @@ final class PersistenceController {
         return formatter
     }()
 
-    private struct Store: Codable {
+    private nonisolated struct Store: Codable {
         var samples: [UsageSample]
-        
-        nonisolated init(samples: [UsageSample]) {
-            self.samples = samples
-        }
     }
-    
-    private struct CurrentSampleStore: Codable {
+
+    private nonisolated struct CurrentSampleStore: Codable {
         var currentSample: UsageSample
     }
 

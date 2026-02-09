@@ -20,28 +20,16 @@ final class SettingsManager {
     
     func setLaunchAtLogin(_ enabled: Bool) {
         userDefaults.set(enabled, forKey: launchAtLoginKey)
-        
-        // Use ServiceManagement framework to set login item
-        // Note: This requires the app bundle identifier to be registered
-        // For a production app, you may need a helper app
-        if #available(macOS 13.0, *) {
-            // Use the new SMAppService API on macOS 13+
-            let service = SMAppService.loginItem(identifier: Bundle.main.bundleIdentifier ?? "com.tendontally")
-            do {
-                if enabled {
-                    try service.register()
-                } else {
-                    try service.unregister()
-                }
-            } catch {
-                // Fall back to deprecated API if new one fails
-                let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.tendontally"
-                SMLoginItemSetEnabled(bundleIdentifier as CFString, enabled)
+
+        let service = SMAppService.mainApp
+        do {
+            if enabled {
+                try service.register()
+            } else {
+                try service.unregister()
             }
-        } else {
-            // Use deprecated API for older macOS versions
-            let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.tendontally"
-            SMLoginItemSetEnabled(bundleIdentifier as CFString, enabled)
+        } catch {
+            // Log or handle error as needed
         }
     }
     

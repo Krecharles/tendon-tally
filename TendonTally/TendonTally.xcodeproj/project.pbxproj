@@ -36,6 +36,7 @@
 		AA000001AAAA00000000000B /* HistoryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001A /* HistoryTabView.swift */; };
 		AA000001AAAA00000000000C /* KUITabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001B /* KUITabView.swift */; };
 		AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001C /* MetricType+Color.swift */; };
+		AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001D /* PermissionsTabView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +70,7 @@
 		AA000001AAAA00000000001A /* HistoryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryTabView.swift; path = ../UI/Tabs/HistoryTabView.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001B /* KUITabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KUITabView.swift; path = ../UI/Tabs/KUITabView.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001C /* MetricType+Color.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MetricType+Color.swift"; path = "../UI/Extensions/MetricType+Color.swift"; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA00000000001D /* PermissionsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PermissionsTabView.swift; path = ../UI/Tabs/PermissionsTabView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -139,6 +141,7 @@
 				AA000001AAAA00000000001A /* HistoryTabView.swift */,
 				AA000001AAAA00000000001B /* KUITabView.swift */,
 				AA000001AAAA00000000001C /* MetricType+Color.swift */,
+				AA000001AAAA00000000001D /* PermissionsTabView.swift */,
 			);
 			name = TrackerCore;
 			sourceTree = "<group>";
@@ -246,6 +249,7 @@
 				AA000001AAAA00000000000B /* HistoryTabView.swift in Sources */,
 				AA000001AAAA00000000000C /* KUITabView.swift in Sources */,
 				AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */,
+				AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -385,6 +389,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = TendonTally;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -418,6 +424,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = TendonTally;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
