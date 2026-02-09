@@ -20,7 +20,8 @@ struct TendonTallyApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact)
-        .defaultSize(width: 800, height: 600)
+        .defaultSize(width: 1000, height: 600)
+        .windowResizability(.contentSize)
     }
 }
 

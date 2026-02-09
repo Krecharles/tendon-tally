@@ -41,7 +41,7 @@ struct FullDashboardView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 800, minHeight: 600)
+        .frame(width: 1000, height: 600)
         .background(Color(NSColor.windowBackgroundColor))
     }
 
