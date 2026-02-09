@@ -65,6 +65,7 @@ let package = Package(
                 "UI/Tabs/TodayTabView.swift",
                 "UI/Tabs/HistoryTabView.swift",
                 "UI/Tabs/KUITabView.swift",
+                "UI/Tabs/PermissionsTabView.swift",
                 // UI - Extensions
                 "UI/Extensions/MetricType+Color.swift"
             ],

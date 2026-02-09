@@ -18,10 +18,6 @@ struct TodayTabView: View {
 
                 todayTotalsSection
 
-                if let message = viewModel.permissionIssueMessage {
-                    PermissionBanner(message: message)
-                }
-
                 unitsExplanation
             }
             .padding(24)

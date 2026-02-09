@@ -14,11 +14,6 @@ struct HistoryTabView: View {
                 chartSection
                     .padding(.bottom, 20)
 
-                if let message = viewModel.permissionIssueMessage {
-                    PermissionBanner(message: message)
-                        .padding(.bottom, 12)
-                }
-
                 unitsExplanation
                     .padding(.top, 4)
             }

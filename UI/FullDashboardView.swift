@@ -15,6 +15,7 @@ struct FullDashboardView: View {
         case history
         case settings
         case kui
+        case permissions
     }
 
     var body: some View {
@@ -34,6 +35,8 @@ struct FullDashboardView: View {
                     SettingsView(viewModel: viewModel)
                 case .kui:
                     KUITabView(viewModel: viewModel)
+                case .permissions:
+                    PermissionsTabView(message: viewModel.permissionIssueMessage ?? "")
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -55,7 +58,44 @@ struct FullDashboardView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 24)
-            .padding(.bottom, 32)
+            .padding(.bottom, viewModel.permissionIssueMessage != nil ? 16 : 32)
+
+            if viewModel.permissionIssueMessage != nil {
+                VStack(spacing: 0) {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTabRawValue = Tab.permissions.rawValue
+                        }
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(selectedTab == .permissions ? .red : .red.opacity(0.8))
+                                .frame(width: 20)
+
+                            Text("Permissions")
+                                .font(.system(size: 14, weight: selectedTab == .permissions ? .semibold : .medium))
+                                .foregroundColor(selectedTab == .permissions ? .red : .red.opacity(0.8))
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(selectedTab == .permissions ? Color.red.opacity(0.12) : Color.red.opacity(0.06))
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 12)
+
+                    Divider()
+                        .padding(.horizontal, 12)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 SidebarButton(
