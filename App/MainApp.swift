@@ -47,6 +47,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Start capturing events and metrics aggregation.
         aggregator.start()
+
+        // Bring app to foreground on launch
+        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
