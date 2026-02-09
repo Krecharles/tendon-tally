@@ -74,7 +74,7 @@ enum MetricType: String, CaseIterable, Hashable {
     case clicks = "Mouse Clicks"
     case scroll = "Scroll Distance"
     case mouseDistance = "Mouse Distance"
-    case aggregate = "Total"
+    case aggregate = "KUI"
     
     static var individualMetrics: [MetricType] {
         [.keys, .clicks, .scroll, .mouseDistance]

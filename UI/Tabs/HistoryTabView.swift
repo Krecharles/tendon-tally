@@ -238,7 +238,8 @@ struct HistoryTabView: View {
                 BarChartView(
                     dataPoints: dataPoints,
                     filters: viewModel.activeMetricFilters,
-                    timeFrame: viewModel.selectedTimeFrame
+                    timeFrame: viewModel.selectedTimeFrame,
+                    kuiConfig: viewModel.kuiConfig
                 )
                 .frame(
                     width: availableWidth,
@@ -253,7 +254,7 @@ struct HistoryTabView: View {
     }
 
     private var unitsExplanation: some View {
-        Text("Units are scaled so typical values are of a similar magnitude for an average user (scroll ticks in 100s, mouse distance in 1000s of pixels).")
+        Text("Units are scaled so typical values are of a similar magnitude for an average user (scroll ticks in 100s, mouse distance in 1000s of pixels). KUI uses your configured weights from the KUI tab.")
             .font(.caption2)
             .foregroundColor(.secondary)
             .fixedSize(horizontal: false, vertical: true)

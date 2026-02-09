@@ -41,11 +41,13 @@ struct DashboardView: View {
                     MetricTile(title: "Mouse pixels", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
                 }
                 GridRow {
-                    let total = viewModel.todayTotals.keyPressCount +
-                               viewModel.todayTotals.mouseClickCount +
-                               viewModel.todayTotals.scrollTicks / 100 +
-                               Int(viewModel.todayTotals.mouseDistance / 1_000)
-                    MetricTile(title: "Total", value: total, icon: "chart.bar.fill", color: .purple)
+                    let kui = viewModel.kuiConfig.apply(to: AggregatedMetrics(
+                        keyPressCount: viewModel.todayTotals.keyPressCount,
+                        mouseClickCount: viewModel.todayTotals.mouseClickCount,
+                        scrollTicks: viewModel.todayTotals.scrollTicks,
+                        mouseDistance: viewModel.todayTotals.mouseDistance
+                    ))
+                    MetricTile(title: "KUI", value: Int(kui), icon: "chart.bar.fill", color: .purple)
                     Rectangle().fill(Color.clear).frame(height: 0)
                 }
             }

@@ -13,7 +13,8 @@ struct BarChartView: View {
     let dataPoints: [TimeSeriesDataPoint]
     let filters: Set<MetricType>
     let timeFrame: TimeFrame
-    
+    let kuiConfig: KUIConfig
+
     @State private var hoveredBarTime: Date?
 
     private var activeMetrics: [MetricType] {
@@ -40,11 +41,13 @@ struct BarChartView: View {
     }
     
     private func aggregateValue(for point: TimeSeriesDataPoint) -> Double {
-        // Always sum all metrics regardless of filter selection
-        return Double(point.keyPressCount) + 
-               Double(point.mouseClickCount) + 
-               Double(point.scrollTicks) / 100.0 + 
-               point.mouseDistance / 1000.0
+        let metrics = AggregatedMetrics(
+            keyPressCount: point.keyPressCount,
+            mouseClickCount: point.mouseClickCount,
+            scrollTicks: point.scrollTicks,
+            mouseDistance: point.mouseDistance
+        )
+        return kuiConfig.apply(to: metrics)
     }
     
     private var chartData: [ChartDataPoint] {
@@ -213,7 +216,7 @@ struct BarChartView: View {
             Circle()
                 .fill(MetricType.aggregate.color)
                 .frame(width: 8, height: 8)
-            Text("Total")
+            Text("KUI")
                 .font(.caption2)
             Spacer()
             Text(formatValue(aggregateValue(for: point), for: .aggregate))
@@ -228,7 +231,7 @@ struct BarChartView: View {
             items.append(metric.rawValue)
         }
         if showAggregate {
-            items.append("Total")
+            items.append("KUI")
         }
         return items
     }
