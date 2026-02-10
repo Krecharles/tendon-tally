@@ -9,21 +9,21 @@ struct HistoryTabView: View {
                 headerSection
                     .padding(.bottom, 20)
 
-                timeFrameSelector
-                    .padding(.bottom, 12)
-
-                dateNavigation
-                    .padding(.bottom, 20)
-
-                chartSection
+                HStack(spacing: 12) {
+                    timeFrameSelector
+                    dateNavigation
+                }
+                .padding(.bottom, 12)
 
                 metricFilters
-                    .padding(.top, 14)
+                    .padding(.bottom, 20)
 
-                unitsExplanation
-                    .padding(.top, 16)
+                summaryCard
+                chartCard
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -39,6 +39,7 @@ struct HistoryTabView: View {
     private var timeFrameSelector: some View {
         HStack(spacing: 2) {
             ForEach(TimeFrame.allCases, id: \.self) { timeFrame in
+                let isSelected = viewModel.selectedTimeFrame == timeFrame
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         viewModel.selectedTimeFrame = timeFrame
@@ -46,13 +47,13 @@ struct HistoryTabView: View {
                     }
                 }) {
                     Text(timeFrame.rawValue)
-                        .font(.system(size: 12, weight: viewModel.selectedTimeFrame == timeFrame ? .semibold : .regular))
-                        .foregroundColor(viewModel.selectedTimeFrame == timeFrame ? .primary : .secondary)
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                        .foregroundColor(isSelected ? .white : .secondary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 7)
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(viewModel.selectedTimeFrame == timeFrame ? Color(NSColor.controlBackgroundColor) : Color.clear)
+                                .fill(isSelected ? Color.accentColor : Color.clear)
                         )
                 }
                 .buttonStyle(.plain)
@@ -81,7 +82,8 @@ struct HistoryTabView: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -100,12 +102,28 @@ struct HistoryTabView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(viewModel.timeFrameOffset >= 0 ? .secondary.opacity(0.3) : .secondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(viewModel.timeFrameOffset >= 0)
 
-            Spacer()
+            if viewModel.timeFrameOffset != 0 {
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        viewModel.timeFrameOffset = 0
+                    }
+                }) {
+                    Text("Today")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.accentColor))
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity.combined(with: .scale))
+            }
         }
     }
 
@@ -148,25 +166,31 @@ struct HistoryTabView: View {
         }
     }
 
-    // MARK: - Chart
+    // MARK: - Chart Card (chart + summary footer)
 
-    private var chartSection: some View {
+    private var chartCard: some View {
         let dataPoints = viewModel.timeSeriesData(
             for: viewModel.selectedTimeFrame,
-            offset: viewModel.timeFrameOffset,
-            filters: viewModel.activeMetricFilters
+            offset: viewModel.timeFrameOffset
         )
 
         return BarChartView(
             dataPoints: dataPoints,
-            filters: viewModel.activeMetricFilters,
+            selectedMetric: viewModel.selectedMetric,
             timeFrame: viewModel.selectedTimeFrame,
-            kuiConfig: viewModel.kuiConfig
+            kuiConfig: viewModel.kuiConfig,
+            hasAnyData: hasAnyData
         )
         .frame(height: 340)
-        .padding(16)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
         .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 12, bottomTrailingRadius: 12, topTrailingRadius: 0))
+    }
+
+    private var hasAnyData: Bool {
+        let allData = viewModel.timeSeriesData(for: .lastMonth, offset: 0)
+        return allData.contains { $0.keyPressCount > 0 || $0.mouseClickCount > 0 || $0.scrollTicks > 0 || $0.mouseDistance > 0 }
     }
 
     // MARK: - Metric Filters
@@ -177,14 +201,10 @@ struct HistoryTabView: View {
                 MetricPill(
                     title: metricType.rawValue,
                     metricType: metricType,
-                    isSelected: viewModel.activeMetricFilters.contains(metricType)
+                    isSelected: viewModel.selectedMetric == metricType
                 ) {
                     withAnimation(.easeInOut(duration: 0.15)) {
-                        if viewModel.activeMetricFilters.contains(metricType) {
-                            viewModel.activeMetricFilters.remove(metricType)
-                        } else {
-                            viewModel.activeMetricFilters.insert(metricType)
-                        }
+                        viewModel.selectedMetric = metricType
                     }
                 }
             }
@@ -193,9 +213,77 @@ struct HistoryTabView: View {
         }
     }
 
-    private var unitsExplanation: some View {
-        Text("Scroll ticks in 100s, mouse distance in 1000s of pixels. KUI uses weights from the KUI tab.")
-            .font(.system(size: 11))
-            .foregroundColor(.secondary)
+    // MARK: - Summary Stats
+
+    @State private var showingChangeInfo = false
+
+    private var summaryCard: some View {
+        let stats = viewModel.comparisonStats(
+            for: viewModel.selectedTimeFrame,
+            offset: viewModel.timeFrameOffset
+        )
+
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Circle()
+                .fill(viewModel.selectedMetric.color)
+                .frame(width: 8, height: 8)
+
+            Text("\(formattedTotal(stats.currentTotal)) \(viewModel.selectedMetric.unitLabel)")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.primary)
+
+            Text("this period")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+
+            if let pct = stats.percentageChange {
+                let changeColor: Color = abs(pct) > 20 ? .red : .green
+
+                HStack(spacing: 4) {
+                    Text(formattedPercentage(pct))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(changeColor)
+
+                    Button(action: { showingChangeInfo.toggle() }) {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showingChangeInfo, arrowEdge: .bottom) {
+                        Text("This shows how your activity changed compared to the previous period. Many users aim to keep increases within 20% to gradually adapt to workload changes and reduce the risk of repetitive strain.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.primary)
+                            .frame(width: 240)
+                            .padding(12)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 12))
+    }
+
+    private func formattedTotal(_ value: Double) -> String {
+        if value >= 1000 {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.maximumFractionDigits = 0
+            return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+        }
+        switch viewModel.selectedMetric {
+        case .keys, .clicks:
+            return String(format: "%.0f", value)
+        case .scroll, .mouseDistance, .aggregate:
+            return String(format: "%.1f", value)
+        }
+    }
+
+    private func formattedPercentage(_ pct: Double) -> String {
+        let sign = pct > 0 ? "+" : ""
+        return "\(sign)\(String(format: "%.0f", pct))%"
     }
 }

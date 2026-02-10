@@ -79,6 +79,16 @@ enum MetricType: String, CaseIterable, Hashable {
     static var individualMetrics: [MetricType] {
         [.keys, .clicks, .scroll, .mouseDistance]
     }
+
+    var unitLabel: String {
+        switch self {
+        case .keys: return "keys"
+        case .clicks: return "clicks"
+        case .scroll: return "scroll (100s)"
+        case .mouseDistance: return "distance (1000s px)"
+        case .aggregate: return "KUI"
+        }
+    }
 }
 
 /// Aggregated metrics for a time period.

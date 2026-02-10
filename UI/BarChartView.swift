@@ -1,32 +1,17 @@
 import SwiftUI
 import Charts
 
-struct ChartDataPoint: Identifiable {
-    let id = UUID()
-    let time: Date
-    let metricType: MetricType
-    let value: Double
-    let isPartial: Bool
-}
-
 struct BarChartView: View {
     let dataPoints: [TimeSeriesDataPoint]
-    let filters: Set<MetricType>
+    let selectedMetric: MetricType
     let timeFrame: TimeFrame
     let kuiConfig: KUIConfig
+    let hasAnyData: Bool
 
     @State private var hoveredBarTime: Date?
 
-    private var activeMetrics: [MetricType] {
-        MetricType.individualMetrics.filter { filters.contains($0) }
-    }
-    
-    private var showAggregate: Bool {
-        filters.contains(.aggregate)
-    }
-    
-    private func value(for point: TimeSeriesDataPoint, metricType: MetricType) -> Double {
-        switch metricType {
+    private func value(for point: TimeSeriesDataPoint) -> Double {
+        switch selectedMetric {
         case .keys:
             return Double(point.keyPressCount)
         case .clicks:
@@ -36,84 +21,96 @@ struct BarChartView: View {
         case .mouseDistance:
             return point.mouseDistance / 1000.0
         case .aggregate:
-            return aggregateValue(for: point)
+            let metrics = AggregatedMetrics(
+                keyPressCount: point.keyPressCount,
+                mouseClickCount: point.mouseClickCount,
+                scrollTicks: point.scrollTicks,
+                mouseDistance: point.mouseDistance
+            )
+            return kuiConfig.apply(to: metrics)
         }
     }
-    
-    private func aggregateValue(for point: TimeSeriesDataPoint) -> Double {
-        let metrics = AggregatedMetrics(
-            keyPressCount: point.keyPressCount,
-            mouseClickCount: point.mouseClickCount,
-            scrollTicks: point.scrollTicks,
-            mouseDistance: point.mouseDistance
-        )
-        return kuiConfig.apply(to: metrics)
-    }
-    
-    private var chartData: [ChartDataPoint] {
-        var data: [ChartDataPoint] = []
-        
-        for point in dataPoints {
-            // Add individual metric data points
-            for metricType in activeMetrics {
-                data.append(ChartDataPoint(
-                    time: point.time,
-                    metricType: metricType,
-                    value: value(for: point, metricType: metricType),
-                    isPartial: point.isPartial
-                ))
-            }
-            
-            // Add aggregate data point if enabled
-            if showAggregate {
-                data.append(ChartDataPoint(
-                    time: point.time,
-                    metricType: .aggregate,
-                    value: aggregateValue(for: point),
-                    isPartial: point.isPartial
-                ))
-            }
-        }
-        
-        return data
-    }
-    
-    private func formatValue(_ value: Double, for metricType: MetricType) -> String {
-        switch metricType {
+
+    private func formatValue(_ value: Double) -> String {
+        switch selectedMetric {
         case .keys, .clicks:
             return String(format: "%.0f", value)
         case .scroll, .mouseDistance, .aggregate:
             return String(format: "%.1f", value)
         }
     }
-    
+
+    private var averageValue: Double? {
+        guard timeFrame != .today else { return nil }
+        let values = dataPoints.map { value(for: $0) }
+        let nonZero = values.filter { $0 > 0 }
+        guard !nonZero.isEmpty else { return nil }
+        return nonZero.reduce(0, +) / Double(nonZero.count)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if dataPoints.isEmpty || (filters.isEmpty || (activeMetrics.isEmpty && !showAggregate)) {
-                Text("No data to display")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 40)
+            if dataPoints.isEmpty {
+                emptyState
             } else {
                 chartView
             }
         }
-        .padding(4)
+        .padding(0)
     }
-    
-    private var chartView: some View {
-        Chart(chartData) { dataPoint in
-            BarMark(
-                x: .value("Time", dataPoint.time, unit: timeUnit),
-                y: .value("Value", dataPoint.value)
-            )
-            .foregroundStyle(by: .value("Metric", dataPoint.metricType.rawValue))
-            .position(by: .value("Metric", dataPoint.metricType.rawValue))
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "chart.bar.xaxis")
+                .font(.system(size: 28))
+                .foregroundColor(.secondary.opacity(0.5))
+            Text(hasAnyData ? "No data for this period" : "No data recorded yet")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            if !hasAnyData {
+                Text("Start using your keyboard and mouse to see activity here.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary.opacity(0.7))
+            }
         }
-        .chartForegroundStyleScale(domain: chartLegendItems, range: chartColors)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, 40)
+    }
+
+    private var hoveredPoint: TimeSeriesDataPoint? {
+        guard let hoveredTime = hoveredBarTime else { return nil }
+        guard let point = selectedDataPoint(for: hoveredTime) else { return nil }
+        guard value(for: point) > 0 else { return nil }
+        return point
+    }
+
+    private var chartView: some View {
+        Chart {
+            ForEach(dataPoints) { point in
+                BarMark(
+                    x: .value("Time", point.time, unit: timeUnit),
+                    y: .value("Value", value(for: point))
+                )
+                .foregroundStyle(selectedMetric.color.gradient)
+                .opacity(hoveredPoint != nil && !Calendar.current.isDate(point.time, equalTo: hoveredPoint!.time, toGranularity: timeUnit) ? 0.4 : 1.0)
+            }
+
+            if let avg = averageValue {
+                RuleMark(y: .value("Average", avg))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                    .foregroundStyle(selectedMetric.color.opacity(0.5))
+                    .annotation(position: .top, alignment: .trailing) {
+                        Text("Avg: \(formatValue(avg))")
+                            .font(.caption2)
+                            .foregroundColor(selectedMetric.color.opacity(0.7))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color(NSColor.controlBackgroundColor).opacity(0.8))
+                            .cornerRadius(3)
+                    }
+            }
+        }
         .chartLegend(.hidden)
-        .chartXSelection(value: $hoveredBarTime)
         .chartXAxis {
             AxisMarks(values: .stride(by: strideComponent, count: strideCount)) { value in
                 AxisGridLine()
@@ -145,103 +142,65 @@ struct BarChartView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 300, idealHeight: 350)
         .padding(.vertical, 8)
-        .overlay(alignment: .top) {
-            hoverTooltip
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                let plotFrame = geometry[proxy.plotFrame!]
+
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onContinuousHover { phase in
+                        switch phase {
+                        case .active(let location):
+                            let plotX = location.x - plotFrame.origin.x
+                            hoveredBarTime = proxy.value(atX: plotX, as: Date.self)
+                        case .ended:
+                            hoveredBarTime = nil
+                        }
+                    }
+                    .overlay {
+                        if let point = hoveredPoint {
+                            let barValue = value(for: point)
+                            let barStartX = proxy.position(forX: point.time) ?? 0
+                            let nextTime = Calendar.current.date(byAdding: timeUnit, value: 1, to: point.time) ?? point.time
+                            let barEndX = proxy.position(forX: nextTime) ?? barStartX
+                            let centerX = plotFrame.origin.x + (barStartX + barEndX) / 2.0
+                            let topY = plotFrame.origin.y + (proxy.position(forY: barValue) ?? 0)
+                            let clampedX = min(max(centerX, 60), geometry.size.width - 60)
+                            let tooltipY = max(topY - 20, 12)
+
+                            tooltipContent(for: point)
+                                .position(x: clampedX, y: tooltipY)
+                                .allowsHitTesting(false)
+                        }
+                    }
+            }
         }
     }
-    
-    @ViewBuilder
-    private var hoverTooltip: some View {
-        if let hoveredTime = hoveredBarTime,
-           let selectedPoint = selectedDataPoint(for: hoveredTime),
-           hasNonZeroDataForTime(hoveredTime) {
-            // Show tooltip with all metrics for the selected time period
-            tooltipContent(for: selectedPoint)
-        }
-    }
-    
+
     private func selectedDataPoint(for time: Date) -> TimeSeriesDataPoint? {
         dataPoints.first(where: { Calendar.current.isDate($0.time, equalTo: time, toGranularity: timeUnit) })
     }
-    
-    private func hasNonZeroDataForTime(_ time: Date) -> Bool {
-        // Check if there are any non-zero bars (chart data points) for this time period
-        let barsForTime = chartData.filter { dataPoint in
-            Calendar.current.isDate(dataPoint.time, equalTo: time, toGranularity: timeUnit)
-        }
-        // Return true if at least one bar has a non-zero value
-        return barsForTime.contains { $0.value > 0 }
-    }
-    
+
     @ViewBuilder
     private func tooltipContent(for point: TimeSeriesDataPoint) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(activeMetrics, id: \.self) { metricType in
-                if filters.contains(metricType) {
-                    tooltipRow(metricType: metricType, point: point)
-                }
-            }
-            if showAggregate {
-                tooltipAggregateRow(point: point)
-            }
+        HStack(spacing: 6) {
+            Circle()
+                .fill(selectedMetric.color)
+                .frame(width: 8, height: 8)
+            Text(formatValue(value(for: point)))
+                .font(.caption2)
+                .fontWeight(.semibold)
+            Text(selectedMetric.unitLabel)
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
-        .padding(8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(6)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-        .padding(.top, 8)
     }
-    
-    private func tooltipRow(metricType: MetricType, point: TimeSeriesDataPoint) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(metricType.color)
-                .frame(width: 8, height: 8)
-            Text(metricType.rawValue)
-                .font(.caption2)
-            Spacer()
-            Text(formatValue(value(for: point, metricType: metricType), for: metricType))
-                .font(.caption2)
-                .fontWeight(.semibold)
-        }
-    }
-    
-    private func tooltipAggregateRow(point: TimeSeriesDataPoint) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(MetricType.aggregate.color)
-                .frame(width: 8, height: 8)
-            Text("KUI")
-                .font(.caption2)
-            Spacer()
-            Text(formatValue(aggregateValue(for: point), for: .aggregate))
-                .font(.caption2)
-                .fontWeight(.semibold)
-        }
-    }
-    
-    private var chartLegendItems: [String] {
-        var items: [String] = []
-        for metric in activeMetrics {
-            items.append(metric.rawValue)
-        }
-        if showAggregate {
-            items.append("KUI")
-        }
-        return items
-    }
-    
-    private var chartColors: [Color] {
-        var colors: [Color] = []
-        for metric in activeMetrics {
-            colors.append(metric.color)
-        }
-        if showAggregate {
-            colors.append(MetricType.aggregate.color)
-        }
-        return colors
-    }
-    
+
     private var timeUnit: Calendar.Component {
         switch timeFrame {
         case .today:
@@ -250,7 +209,7 @@ struct BarChartView: View {
             return .day
         }
     }
-    
+
     private var strideComponent: Calendar.Component {
         switch timeFrame {
         case .today:
@@ -259,27 +218,18 @@ struct BarChartView: View {
             return .day
         }
     }
-    
+
     private var strideCount: Int {
         switch timeFrame {
         case .today:
-            return 1 // Data is grouped in 1-hour intervals
+            return 1
         case .lastWeek:
             return 1
         case .lastMonth:
-            return 2 // Data is grouped in 2-day intervals
+            return 5
         }
     }
-    
-    private var dateFormat: Date.FormatStyle {
-        switch timeFrame {
-        case .today:
-            return .dateTime.hour().minute()
-        case .lastWeek, .lastMonth:
-            return .dateTime.month().day()
-        }
-    }
-    
+
     private func formatHourLabel(_ date: Date) -> String {
         switch timeFrame {
         case .today:

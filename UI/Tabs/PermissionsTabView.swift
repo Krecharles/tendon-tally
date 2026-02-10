@@ -13,7 +13,7 @@ struct PermissionsTabView: View {
         ScrollView {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: 48)
+                    .frame(height: 8)
 
                 VStack(spacing: 32) {
                     // Header

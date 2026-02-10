@@ -32,7 +32,9 @@ struct TodayTabView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

@@ -13,7 +13,7 @@ final class AppPreferences {
     private enum Keys {
         static let selectedTab = "selectedTab"
         static let selectedTimeFrame = "selectedTimeFrame"
-        static let activeMetricFilters = "activeMetricFilters"
+        static let selectedMetric = "selectedMetric"
         static let kuiConfig = "kuiConfig"
         static let launchAtLogin = "launchAtLogin"
         static let showInDock = "showInDock"
@@ -34,19 +34,18 @@ final class AppPreferences {
         }
     }
 
-    // MARK: - Metric Filters
+    // MARK: - Selected Metric
 
-    var activeMetricFilters: Set<MetricType> {
+    var selectedMetric: MetricType {
         get {
-            if let strings = defaults.array(forKey: Keys.activeMetricFilters) as? [String] {
-                let filters = Set(strings.compactMap { MetricType(rawValue: $0) })
-                if !filters.isEmpty { return filters }
+            if let raw = defaults.string(forKey: Keys.selectedMetric),
+               let metric = MetricType(rawValue: raw) {
+                return metric
             }
-            return Set(MetricType.individualMetrics + [.aggregate])
+            return .keys
         }
         set {
-            let strings = newValue.map { $0.rawValue }
-            defaults.set(strings, forKey: Keys.activeMetricFilters)
+            defaults.set(newValue.rawValue, forKey: Keys.selectedMetric)
         }
     }
 

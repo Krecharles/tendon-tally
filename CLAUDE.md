@@ -33,6 +33,9 @@ swift test         # Run tests
 - MetricsAggregator accepts dependencies via init for testability
 - AppPreferences centralizes all UserDefaults access
 
+## Note on Prompts
+The user often dictates prompts via speech-to-text. If something seems off, try to interpret what was intended — the dictation software may have misheard or misinterpreted words.
+
 ## Critical Files
 - `UI/FullDashboardView.swift` - Main dashboard shell with sidebar navigation
 - `Domain/MetricsAggregator.swift` - Core windowing logic with DI support

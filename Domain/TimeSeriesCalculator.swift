@@ -44,9 +44,9 @@ struct TimeSeriesCalculator {
             component = .day
             value = 1
         case .lastMonth:
-            // ~30 days, target ~15 bars = 2-day intervals
+            // ~30 days = daily intervals (one bar per day)
             component = .day
-            value = 2
+            value = 1
         }
         
         // Create time buckets - for current period (offset 0), include current time

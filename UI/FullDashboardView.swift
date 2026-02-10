@@ -38,7 +38,7 @@ struct FullDashboardView: View {
                 case .permissions:
                     PermissionsTabView(message: viewModel.permissionIssueMessage ?? "")
                 }
-            }
+            }   
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 1000, height: 600)
@@ -57,7 +57,7 @@ struct FullDashboardView: View {
                     .foregroundColor(.primary)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 24)
+            .padding(.top, 8)
             .padding(.bottom, 32)
 
             VStack(alignment: .leading, spacing: 4) {

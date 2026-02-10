@@ -14,9 +14,9 @@ final class MetricsViewModel: ObservableObject {
         }
     }
     @Published var timeFrameOffset: Int = 0
-    @Published var activeMetricFilters: Set<MetricType> {
+    @Published var selectedMetric: MetricType {
         didSet {
-            AppPreferences.shared.activeMetricFilters = activeMetricFilters
+            AppPreferences.shared.selectedMetric = selectedMetric
         }
     }
     @Published var kuiConfig: KUIConfig {
@@ -37,7 +37,7 @@ final class MetricsViewModel: ObservableObject {
 
         let prefs = AppPreferences.shared
         self.selectedTimeFrame = prefs.selectedTimeFrame
-        self.activeMetricFilters = prefs.activeMetricFilters
+        self.selectedMetric = prefs.selectedMetric
         self.kuiConfig = prefs.kuiConfig
 
         aggregator.onUpdate = { [weak self] current, history in
@@ -126,7 +126,7 @@ final class MetricsViewModel: ObservableObject {
         )
     }
 
-    func aggregatedMetrics(for timeFrame: TimeFrame, offset: Int, filters: Set<MetricType>) -> AggregatedMetrics {
+    func aggregatedMetrics(for timeFrame: TimeFrame, offset: Int) -> AggregatedMetrics {
         let (startDate, endDate) = timeFrame.dateRange(offset: offset)
         let now = Date()
 
@@ -171,7 +171,40 @@ final class MetricsViewModel: ObservableObject {
         aggregator.reloadHistory()
     }
 
-    func timeSeriesData(for timeFrame: TimeFrame, offset: Int, filters: Set<MetricType>) -> [TimeSeriesDataPoint] {
+    func comparisonStats(for timeFrame: TimeFrame, offset: Int) -> (currentTotal: Double, percentageChange: Double?, hasPriorData: Bool) {
+        let current = aggregatedMetrics(for: timeFrame, offset: offset)
+        let prior = aggregatedMetrics(for: timeFrame, offset: offset - 1)
+
+        let currentValue = metricValue(from: current, for: selectedMetric)
+        let priorValue = metricValue(from: prior, for: selectedMetric)
+
+        let hasPriorData = priorValue > 0
+        let percentageChange: Double?
+        if hasPriorData {
+            percentageChange = ((currentValue - priorValue) / priorValue) * 100.0
+        } else {
+            percentageChange = nil
+        }
+
+        return (currentTotal: currentValue, percentageChange: percentageChange, hasPriorData: hasPriorData)
+    }
+
+    private func metricValue(from metrics: AggregatedMetrics, for metric: MetricType) -> Double {
+        switch metric {
+        case .keys:
+            return Double(metrics.keyPressCount)
+        case .clicks:
+            return Double(metrics.mouseClickCount)
+        case .scroll:
+            return Double(metrics.scrollTicks) / 100.0
+        case .mouseDistance:
+            return metrics.mouseDistance / 1000.0
+        case .aggregate:
+            return kuiConfig.apply(to: metrics)
+        }
+    }
+
+    func timeSeriesData(for timeFrame: TimeFrame, offset: Int) -> [TimeSeriesDataPoint] {
         return TimeSeriesCalculator.calculateTimeSeries(
             samples: aggregator.history,
             currentSample: offset == 0 ? aggregator.currentSample : nil,
