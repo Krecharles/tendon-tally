@@ -1,11 +1,13 @@
 # TendonTally - macOS Activity Tracker
 
 ## Overview
-Menu bar app tracking keyboard/mouse activity in 5-minute rolling windows. SwiftUI + AppKit, macOS 14+, Swift 5.9+.
+
+Menu bar app tracking keyboard/mouse activity in 1-minute rolling windows. SwiftUI + AppKit, macOS 14+, Swift 5.9+.
 
 ## Architecture
+
 - **App/** - Entry point (@main), NSStatusItem, AppState singleton
-- **Domain/** - EventTapManager (event tap), MetricsAggregator (5-min windows), PersistenceController (JSON storage), TimeSeriesCalculator
+- **Domain/** - EventTapManager (event tap), MetricsAggregator (1-min windows), PersistenceController (JSON storage), TimeSeriesCalculator
 - **Domain/Protocols/** - EventTapping, MetricsPersisting, MetricsAggregating (for testability/DI)
 - **Models/** - UsageSample, MetricTypes, RawActivitySnapshot
 - **UI/** - MetricsViewModel (MVVM), FullDashboardView (shell with sidebar), DashboardView (popover)
@@ -14,6 +16,7 @@ Menu bar app tracking keyboard/mouse activity in 5-minute rolling windows. Swift
 - **UI/Extensions/** - MetricType+Color
 
 ## Build & Run
+
 ```bash
 swift build        # Build with SPM
 swift run TendonTally  # Run from CLI
@@ -22,21 +25,25 @@ swift test         # Run tests
 ```
 
 ## Build System
+
 - **Primary:** Swift Package Manager (Package.swift)
 - **Xcode project:** Used ONLY for Assets.xcassets management
   - Do NOT add source files to Xcode project
   - Assets changes require Xcode, then rebuild with SPM
 
 ## Key Patterns
+
 - Data flow: EventTapManager -> MetricsAggregator (callbacks) -> MetricsViewModel (@Published) -> Views
 - Protocols (EventTapping, MetricsPersisting, MetricsAggregating) enable dependency injection
 - MetricsAggregator accepts dependencies via init for testability
 - AppPreferences centralizes all UserDefaults access
 
 ## Note on Prompts
+
 The user often dictates prompts via speech-to-text. If something seems off, try to interpret what was intended — the dictation software may have misheard or misinterpreted words.
 
 ## Critical Files
+
 - `UI/FullDashboardView.swift` - Main dashboard shell with sidebar navigation
 - `Domain/MetricsAggregator.swift` - Core windowing logic with DI support
 - `UI/MetricsViewModel.swift` - View model bridging domain to UI

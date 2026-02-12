@@ -38,6 +38,8 @@ let package = Package(
                 "Domain/PersistenceController.swift",
                 "Domain/SettingsManager.swift",
                 "Domain/TimeSeriesCalculator.swift",
+                "Domain/BreaksEvaluator.swift",
+                "Domain/BreakNotificationManager.swift",
                 // Domain protocols
                 "Domain/Protocols/EventTapping.swift",
                 "Domain/Protocols/MetricsPersisting.swift",
@@ -48,6 +50,7 @@ let package = Package(
                 "Models/UsageSample.swift",
                 "Models/RawActivitySnapshot.swift",
                 "Models/MetricTypes.swift",
+                "Models/Breaks.swift",
                 // UI components
                 "UI/MetricsViewModel.swift",
                 "UI/DashboardView.swift",
@@ -64,6 +67,7 @@ let package = Package(
                 "UI/Tabs/TodayTabView.swift",
                 "UI/Tabs/HistoryTabView.swift",
                 "UI/Tabs/KUITabView.swift",
+                "UI/Tabs/BreaksTabView.swift",
                 "UI/Tabs/PermissionsTabView.swift",
                 // UI - Extensions
                 "UI/Extensions/MetricType+Color.swift"
@@ -75,7 +79,8 @@ let package = Package(
                 .linkedFramework("SwiftUI", .when(platforms: [.macOS])),
                 .linkedFramework("AppKit", .when(platforms: [.macOS])),
                 .linkedFramework("CoreGraphics", .when(platforms: [.macOS])),
-                .linkedFramework("ServiceManagement", .when(platforms: [.macOS]))
+                .linkedFramework("ServiceManagement", .when(platforms: [.macOS])),
+                .linkedFramework("UserNotifications", .when(platforms: [.macOS]))
             ]
         ),
         // Test target compiles needed source files directly

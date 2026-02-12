@@ -128,4 +128,45 @@ final class MetricTypesTests: XCTestCase {
         let decoded = try JSONDecoder().decode(KUIConfig.self, from: data)
         XCTAssertEqual(config, decoded)
     }
+
+    // MARK: - BreaksConfig
+
+    func testBreaksConfigNormalizationEnforcesTwoMinuteReminderLead() {
+        let config = BreaksConfig(
+            lookbackMinutes: 10,
+            requiredBreakMinutes: 9,
+            remindersEnabled: true
+        )
+
+        let normalized = config.normalized()
+        XCTAssertEqual(
+            normalized.lookbackMinutes - normalized.requiredBreakMinutes,
+            BreaksConfig.minTimeBeforeReminderMinutes
+        )
+    }
+
+    func testBreaksConfigNormalizationKeepsValidReminderLead() {
+        let config = BreaksConfig(
+            lookbackMinutes: 30,
+            requiredBreakMinutes: 5,
+            remindersEnabled: true
+        )
+
+        let normalized = config.normalized()
+        XCTAssertEqual(normalized.lookbackMinutes, 30)
+        XCTAssertEqual(normalized.requiredBreakMinutes, 5)
+    }
+
+    func testBreaksConfigNormalizationAllowsTwoMinuteLeadWithFiveMinuteBreak() {
+        let config = BreaksConfig(
+            lookbackMinutes: 7,
+            requiredBreakMinutes: 5,
+            remindersEnabled: true
+        )
+
+        let normalized = config.normalized()
+        XCTAssertEqual(normalized.lookbackMinutes, 7)
+        XCTAssertEqual(normalized.requiredBreakMinutes, 5)
+        XCTAssertEqual(normalized.lookbackMinutes - normalized.requiredBreakMinutes, 2)
+    }
 }

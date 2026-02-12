@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct KUITabView: View {
     @ObservedObject var viewModel: MetricsViewModel
@@ -14,10 +15,7 @@ struct KUITabView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.primary)
 
-                Text("The Key Usage Indicator combines your input metrics into a single score. Adjust the weights to prioritise what matters to you.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                explanationCard
 
                 weightsSection
 
@@ -31,6 +29,33 @@ struct KUITabView: View {
         .onTapGesture {
             NSApp.keyWindow?.makeFirstResponder(nil)
         }
+    }
+
+    private var explanationCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.blue)
+                Text("How KUI Works")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+
+            Text("The Key Usage Indicator combines your keyboard and mouse activity into one score. Adjust each metric weight to reflect what matters to you most, then use the total to compare workload day to day.")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: 560, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+        )
     }
 
     private var weightsSection: some View {

@@ -12,6 +12,7 @@ final class MetricsAggregator {
 
     private let windowLength: TimeInterval = 1 * 60
     private var windowStart: Date = Date()
+    private(set) var lastActivityAt: Date?
 
     private(set) var currentSample: UsageSample
     private(set) var history: [UsageSample] = []
@@ -37,10 +38,12 @@ final class MetricsAggregator {
     init(
         eventTapManager: EventTapping = EventTapManager(),
         persistence: MetricsPersisting = PersistenceController.shared,
+        restoredLastActivityAt: Date? = nil,
         now: Date = Date()
     ) {
         self.eventTapManager = eventTapManager
         self.persistence = persistence
+        self.lastActivityAt = restoredLastActivityAt
 
         let (stored, savedCurrent) = persistence.loadSamples()
         self.history = stored.sorted { $0.start > $1.start }
@@ -194,6 +197,9 @@ final class MetricsAggregator {
 
     private func refreshCurrentSample(end: Date) {
         let raw = eventTapManager.snapshot()
+        if let rawLastActivity = raw.lastActivityAt {
+            lastActivityAt = rawLastActivity
+        }
         currentSample = UsageSample(
             id: currentSample.id,
             start: windowStart,

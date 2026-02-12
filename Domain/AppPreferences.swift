@@ -17,6 +17,9 @@ final class AppPreferences {
         static let kuiConfig = "kuiConfig"
         static let launchAtLogin = "launchAtLogin"
         static let showInDock = "showInDock"
+        static let breaksConfig = "breaksConfig"
+        static let breakLastActivityAt = "breakLastActivityAt"
+        static let breakLastBreakEndedAt = "breakLastBreakEndedAt"
     }
 
     // MARK: - Time Frame
@@ -78,5 +81,35 @@ final class AppPreferences {
     var showInDock: Bool {
         get { defaults.bool(forKey: Keys.showInDock) }
         set { defaults.set(newValue, forKey: Keys.showInDock) }
+    }
+
+    // MARK: - Breaks Config
+
+    var breaksConfig: BreaksConfig {
+        get {
+            if let data = defaults.data(forKey: Keys.breaksConfig),
+               let config = try? JSONDecoder().decode(BreaksConfig.self, from: data) {
+                return config.normalized()
+            }
+            return .default
+        }
+        set {
+            let normalized = newValue.normalized()
+            if let data = try? JSONEncoder().encode(normalized) {
+                defaults.set(data, forKey: Keys.breaksConfig)
+            }
+        }
+    }
+
+    // MARK: - Break Runtime State
+
+    var breakLastActivityAt: Date? {
+        get { defaults.object(forKey: Keys.breakLastActivityAt) as? Date }
+        set { defaults.set(newValue, forKey: Keys.breakLastActivityAt) }
+    }
+
+    var breakLastBreakEndedAt: Date? {
+        get { defaults.object(forKey: Keys.breakLastBreakEndedAt) as? Date }
+        set { defaults.set(newValue, forKey: Keys.breakLastBreakEndedAt) }
     }
 }

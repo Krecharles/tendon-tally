@@ -37,6 +37,10 @@
 		AA000001AAAA00000000000C /* KUITabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001B /* KUITabView.swift */; };
 		AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001C /* MetricType+Color.swift */; };
 		AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001D /* PermissionsTabView.swift */; };
+		AB000001BBBB000000000001 /* Breaks.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000011 /* Breaks.swift */; };
+		AB000001BBBB000000000002 /* BreaksEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000012 /* BreaksEvaluator.swift */; };
+		AB000001BBBB000000000003 /* BreakNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000013 /* BreakNotificationManager.swift */; };
+		AB000001BBBB000000000004 /* BreaksTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000014 /* BreaksTabView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -71,6 +75,10 @@
 		AA000001AAAA00000000001B /* KUITabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KUITabView.swift; path = ../UI/Tabs/KUITabView.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001C /* MetricType+Color.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MetricType+Color.swift"; path = "../UI/Extensions/MetricType+Color.swift"; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001D /* PermissionsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PermissionsTabView.swift; path = ../UI/Tabs/PermissionsTabView.swift; sourceTree = SOURCE_ROOT; };
+		AB000001BBBB000000000011 /* Breaks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Breaks.swift; path = ../Models/Breaks.swift; sourceTree = SOURCE_ROOT; };
+		AB000001BBBB000000000012 /* BreaksEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreaksEvaluator.swift; path = ../Domain/BreaksEvaluator.swift; sourceTree = SOURCE_ROOT; };
+		AB000001BBBB000000000013 /* BreakNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreakNotificationManager.swift; path = ../Domain/BreakNotificationManager.swift; sourceTree = SOURCE_ROOT; };
+		AB000001BBBB000000000014 /* BreaksTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreaksTabView.swift; path = ../UI/Tabs/BreaksTabView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -120,6 +128,8 @@
 				2B956A282F2CD546004692F2 /* PersistenceController.swift */,
 				2B956A262F2CD520004692F2 /* SettingsManager.swift */,
 				2BFFFF122F2D000000000003 /* TimeSeriesCalculator.swift */,
+				AB000001BBBB000000000012 /* BreaksEvaluator.swift */,
+				AB000001BBBB000000000013 /* BreakNotificationManager.swift */,
 				AA000001AAAA000000000010 /* EventTapping.swift */,
 				AA000001AAAA000000000011 /* MetricsPersisting.swift */,
 				AA000001AAAA000000000012 /* MetricsAggregating.swift */,
@@ -127,6 +137,7 @@
 				2B3B57662F2A30000001626F /* UsageSample.swift */,
 				2BFFFF102F2D000000000001 /* RawActivitySnapshot.swift */,
 				2BFFFF112F2D000000000002 /* MetricTypes.swift */,
+				AB000001BBBB000000000011 /* Breaks.swift */,
 				2B3B57672F2A30000001626F /* ../UI/MetricsViewModel.swift */,
 				2B3B57682F2A30000001626F /* ../UI/DashboardView.swift */,
 				2B956A2A2F2CD569004692F2 /* MainTabView.swift */,
@@ -140,6 +151,7 @@
 				AA000001AAAA000000000019 /* TodayTabView.swift */,
 				AA000001AAAA00000000001A /* HistoryTabView.swift */,
 				AA000001AAAA00000000001B /* KUITabView.swift */,
+				AB000001BBBB000000000014 /* BreaksTabView.swift */,
 				AA000001AAAA00000000001C /* MetricType+Color.swift */,
 				AA000001AAAA00000000001D /* PermissionsTabView.swift */,
 			);
@@ -227,11 +239,14 @@
 				2BFFFF202F2D000000000004 /* RawActivitySnapshot.swift in Sources */,
 				2BFFFF212F2D000000000005 /* MetricTypes.swift in Sources */,
 				2BFFFF222F2D000000000006 /* TimeSeriesCalculator.swift in Sources */,
+				AB000001BBBB000000000002 /* BreaksEvaluator.swift in Sources */,
+				AB000001BBBB000000000003 /* BreakNotificationManager.swift in Sources */,
 				2B956A292F2CD546004692F2 /* PersistenceController.swift in Sources */,
 				2B3B576D2F2A30000001626F /* UsageSample.swift in Sources */,
 				2B956A312F2CD827004692F2 /* AppState.swift in Sources */,
 				2B956A2C2F2CD569004692F2 /* SettingsView.swift in Sources */,
 				2B956A2D2F2CD569004692F2 /* MainTabView.swift in Sources */,
+				AB000001BBBB000000000004 /* BreaksTabView.swift in Sources */,
 				2B3B576E2F2A30000001626F /* ../UI/MetricsViewModel.swift in Sources */,
 				2B3B576F2F2A30000001626F /* ../UI/DashboardView.swift in Sources */,
 				2B956A272F2CD520004692F2 /* SettingsManager.swift in Sources */,
@@ -240,6 +255,7 @@
 				AA000001AAAA000000000002 /* MetricsPersisting.swift in Sources */,
 				AA000001AAAA000000000003 /* MetricsAggregating.swift in Sources */,
 				AA000001AAAA000000000004 /* AppPreferences.swift in Sources */,
+				AB000001BBBB000000000001 /* Breaks.swift in Sources */,
 				AA000001AAAA000000000005 /* MetricTile.swift in Sources */,
 				AA000001AAAA000000000006 /* PermissionBanner.swift in Sources */,
 				AA000001AAAA000000000007 /* SidebarButton.swift in Sources */,

@@ -56,7 +56,10 @@ final class EventTapManager {
         // Key down — filter out auto-repeat so holding a key counts as one stroke
         let keyHandler: (NSEvent) -> NSEvent? = { [weak self] event in
             if !event.isARepeat {
-                self?.queue.async { self?._snapshot.keyPressCount += 1 }
+                self?.queue.async {
+                    self?._snapshot.keyPressCount += 1
+                    self?._snapshot.lastActivityAt = Date()
+                }
             }
             return event
         }
@@ -64,19 +67,28 @@ final class EventTapManager {
 
         // Mouse clicks
         let leftClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.queue.async { self?._snapshot.mouseClickCount += 1 }
+            self?.queue.async {
+                self?._snapshot.mouseClickCount += 1
+                self?._snapshot.lastActivityAt = Date()
+            }
             return event
         }
         addMonitors(matching: .leftMouseDown, handler: leftClickHandler)
 
         let rightClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.queue.async { self?._snapshot.mouseClickCount += 1 }
+            self?.queue.async {
+                self?._snapshot.mouseClickCount += 1
+                self?._snapshot.lastActivityAt = Date()
+            }
             return event
         }
         addMonitors(matching: .rightMouseDown, handler: rightClickHandler)
 
         let otherClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.queue.async { self?._snapshot.mouseClickCount += 1 }
+            self?.queue.async {
+                self?._snapshot.mouseClickCount += 1
+                self?._snapshot.lastActivityAt = Date()
+            }
             return event
         }
         addMonitors(matching: .otherMouseDown, handler: otherClickHandler)
@@ -92,7 +104,10 @@ final class EventTapManager {
                 magnitude = Int(deltaY)
             }
             if magnitude > 0 {
-                self?.queue.async { self?._snapshot.scrollTicks += magnitude }
+                self?.queue.async {
+                    self?._snapshot.scrollTicks += magnitude
+                    self?._snapshot.lastActivityAt = Date()
+                }
             }
             return event
         }
@@ -110,6 +125,7 @@ final class EventTapManager {
                     self._snapshot.mouseDistance += distance
                 }
                 self.lastMouseLocation = location
+                self._snapshot.lastActivityAt = Date()
             }
             return event
         }
@@ -127,6 +143,7 @@ final class EventTapManager {
                     self._snapshot.mouseDistance += distance
                 }
                 self.lastMouseLocation = location
+                self._snapshot.lastActivityAt = Date()
             }
             return event
         }
@@ -207,7 +224,9 @@ final class EventTapManager {
     /// Synchronous so that the next snapshot() call reads zeroes.
     func resetCounters() {
         queue.sync {
+            let lastActivityAt = self._snapshot.lastActivityAt
             self._snapshot = RawActivitySnapshot()
+            self._snapshot.lastActivityAt = lastActivityAt
         }
     }
 }

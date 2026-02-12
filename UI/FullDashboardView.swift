@@ -13,6 +13,7 @@ struct FullDashboardView: View {
     enum Tab: String {
         case today
         case history
+        case breaks
         case settings
         case kui
         case permissions
@@ -31,6 +32,8 @@ struct FullDashboardView: View {
                     TodayTabView(viewModel: viewModel)
                 case .history:
                     HistoryTabView(viewModel: viewModel)
+                case .breaks:
+                    BreaksTabView(viewModel: viewModel)
                 case .settings:
                     SettingsView(viewModel: viewModel)
                 case .kui:
@@ -88,6 +91,16 @@ struct FullDashboardView: View {
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedTabRawValue = Tab.kui.rawValue
+                    }
+                }
+
+                SidebarButton(
+                    title: "Breaks",
+                    icon: "figure.walk.motion",
+                    isSelected: selectedTab == .breaks
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTabRawValue = Tab.breaks.rawValue
                     }
                 }
             }

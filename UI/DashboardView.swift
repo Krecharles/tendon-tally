@@ -25,6 +25,10 @@ struct DashboardView: View {
 
             metricsGrid
 
+            if viewModel.breaksConfig.remindersEnabled {
+                popoverBreakStatusCard
+            }
+
             if let message = viewModel.permissionIssueMessage {
                 PermissionBanner(message: message)
             }
@@ -94,6 +98,53 @@ struct DashboardView: View {
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var popoverBreakStatusCard: some View {
+        let phase = viewModel.breakCardPhase
+        let color: Color = phase == .onBreak ? .blue : (phase == .due ? .red : .green)
+        let symbol = phase == .onBreak ? "pause.circle.fill" : (phase == .due ? "bell.badge.fill" : "checkmark.circle.fill")
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(color)
+                    .frame(width: 20, height: 20)
+                    .background(color.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+
+                Text("Breaks")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Text(viewModel.breakCardPrimaryLabel)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+            }
+
+            Text(viewModel.breakCardPrimaryValue)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+
+            ProgressView(value: viewModel.breakCardProgressValue)
+                .tint(color)
+
+            Text(viewModel.breakLastQualifyingBreakText)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(color.opacity(0.24), lineWidth: 1)
+        )
     }
 
     private func openDashboard() {

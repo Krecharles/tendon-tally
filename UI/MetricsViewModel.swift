@@ -24,11 +24,20 @@ final class MetricsViewModel: ObservableObject {
             AppPreferences.shared.kuiConfig = kuiConfig
         }
     }
+    @Published private(set) var breaksConfig: BreaksConfig
+    @Published private(set) var breaksEvaluation: BreaksEvaluation
+    @Published private(set) var breakNotificationStatusMessage: String?
 
     private let aggregator: MetricsAggregator
+    private let breakNotificationManager: BreakNotificationManager
+    private var breakTransitionTracker: BreakTransitionTracker
 
-    init(aggregator: MetricsAggregator) {
+    init(
+        aggregator: MetricsAggregator,
+        breakNotificationManager: BreakNotificationManager = BreakNotificationManager()
+    ) {
         self.aggregator = aggregator
+        self.breakNotificationManager = breakNotificationManager
         self.currentSample = aggregator.currentSample
         self.todayTotals = MetricsViewModel.computeTodayTotals(
             current: aggregator.currentSample,
@@ -39,6 +48,23 @@ final class MetricsViewModel: ObservableObject {
         self.selectedTimeFrame = prefs.selectedTimeFrame
         self.selectedMetric = prefs.selectedMetric
         self.kuiConfig = prefs.kuiConfig
+        self.breaksConfig = prefs.breaksConfig.normalized()
+
+        // Restore transition tracker from persisted state
+        var tracker = BreakTransitionTracker()
+        tracker.restoreFromStartup(
+            persistedLastActivityAt: aggregator.lastActivityAt ?? prefs.breakLastActivityAt,
+            persistedLastBreakEndedAt: prefs.breakLastBreakEndedAt,
+            config: prefs.breaksConfig.normalized()
+        )
+        self.breakTransitionTracker = tracker
+
+        self.breaksEvaluation = BreaksEvaluator.evaluate(
+            lastBreakEndedAt: tracker.lastBreakEndedAt,
+            lastActivityAt: aggregator.lastActivityAt ?? prefs.breakLastActivityAt,
+            config: prefs.breaksConfig.normalized()
+        )
+        self.breakNotificationStatusMessage = breakNotificationManager.statusMessage
 
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in
@@ -46,6 +72,7 @@ final class MetricsViewModel: ObservableObject {
                 self.currentSample = current
                 self.recentHistory = Array(history.prefix(12))
                 self.todayTotals = MetricsViewModel.computeTodayTotals(current: current, history: history)
+                self.evaluateBreaksAndHandleReminder()
             }
         }
 
@@ -60,6 +87,8 @@ final class MetricsViewModel: ObservableObject {
                 self?.permissionIssueMessage = nil
             }
         }
+
+        evaluateBreaksAndHandleReminder()
     }
 
     private static func computeTodayTotals(current: UsageSample, history: [UsageSample]) -> UsageSample {
@@ -169,6 +198,15 @@ final class MetricsViewModel: ObservableObject {
 
     func reloadHistory() {
         aggregator.reloadHistory()
+        evaluateBreaksAndHandleReminder()
+    }
+
+    func updateBreaksConfig(_ config: BreaksConfig) {
+        let normalized = config.normalized()
+        guard normalized != breaksConfig else { return }
+        breaksConfig = normalized
+        AppPreferences.shared.breaksConfig = normalized
+        evaluateBreaksAndHandleReminder()
     }
 
     func comparisonStats(for timeFrame: TimeFrame, offset: Int) -> (currentTotal: Double, percentageChange: Double?, hasPriorData: Bool) {
@@ -211,5 +249,143 @@ final class MetricsViewModel: ObservableObject {
             timeFrame: timeFrame,
             offset: offset
         )
+    }
+
+    var breakCardPhase: BreakPhase {
+        breaksEvaluation.phase
+    }
+
+    var breakLastQualifyingBreakText: String {
+        if let lastBreak = breaksEvaluation.lastBreakEndedAt {
+            return "Last qualifying break ended at \(formattedClockTime(lastBreak))."
+        }
+        return "No completed break has been recorded yet."
+    }
+
+    var breakCardPrimaryLabel: String {
+        switch breaksEvaluation.phase {
+        case .work:
+            return "Next break in"
+        case .due:
+            return "Break remaining"
+        case .onBreak:
+            return "On break"
+        }
+    }
+
+    var breakCardPrimaryValue: String {
+        switch breaksEvaluation.phase {
+        case .work:
+            return breakTimeUntilDueDisplay
+        case .due:
+            let remaining = max(0, breaksEvaluation.requiredBreakSeconds - breaksEvaluation.currentIdleSeconds)
+            return formattedDurationEmphasized(remaining)
+        case .onBreak:
+            return formattedDurationEmphasized(breaksEvaluation.currentIdleSeconds)
+        }
+    }
+
+    var breakCardProgressValue: Double {
+        switch breaksEvaluation.phase {
+        case .work:
+            guard let untilDue = breakTimeUntilDueSeconds else { return 0 }
+            return clampedProgress(untilDue / breaksEvaluation.workWindowSeconds)
+        case .due:
+            return clampedProgress(breaksEvaluation.currentIdleSeconds / breaksEvaluation.requiredBreakSeconds)
+        case .onBreak:
+            return 1.0
+        }
+    }
+
+    var breakCardProgressText: String {
+        switch breaksEvaluation.phase {
+        case .work:
+            guard let untilDue = breakTimeUntilDueSeconds else { return "" }
+            let elapsed = max(0, breaksEvaluation.workWindowSeconds - untilDue)
+            return "\(formattedDuration(elapsed)) of \(formattedDuration(breaksEvaluation.workWindowSeconds)) work cycle used"
+        case .due:
+            return breakDueProgressText
+        case .onBreak:
+            return "Break in progress — stay idle to complete."
+        }
+    }
+
+    var breakDueProgressText: String {
+        let elapsed = min(breaksEvaluation.requiredBreakSeconds, breaksEvaluation.currentIdleSeconds)
+        return "\(formattedDuration(elapsed)) of \(formattedDuration(breaksEvaluation.requiredBreakSeconds)) break completed"
+    }
+
+    var breakTimeUntilDueDisplay: String {
+        guard let seconds = breakTimeUntilDueSeconds else { return "--" }
+        return formattedDurationEmphasized(seconds)
+    }
+
+    var breakTimeUntilDueSeconds: TimeInterval? {
+        guard breaksEvaluation.phase == .work else { return nil }
+        guard let dueDate = breakNextDueDate else { return nil }
+        return max(0, dueDate.timeIntervalSinceNow)
+    }
+
+    private func evaluateBreaksAndHandleReminder(now: Date = Date()) {
+        breakTransitionTracker.update(
+            lastActivityAt: aggregator.lastActivityAt,
+            config: breaksConfig,
+            now: now
+        )
+
+        let evaluation = BreaksEvaluator.evaluate(
+            lastBreakEndedAt: breakTransitionTracker.lastBreakEndedAt,
+            lastActivityAt: aggregator.lastActivityAt,
+            config: breaksConfig,
+            now: now
+        )
+        breaksEvaluation = evaluation
+
+        AppPreferences.shared.breakLastActivityAt = aggregator.lastActivityAt
+        AppPreferences.shared.breakLastBreakEndedAt = breakTransitionTracker.lastBreakEndedAt
+
+        breakNotificationManager.handleEvaluation(evaluation, config: breaksConfig)
+        breakNotificationStatusMessage = breakNotificationManager.statusMessage
+    }
+
+    private func formattedClockTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private func formattedDuration(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        let minutes = total / 60
+        let remainingSeconds = total % 60
+        if minutes == 0 {
+            return "\(remainingSeconds)s"
+        }
+        return "\(minutes)m \(remainingSeconds)s"
+    }
+
+    private func clampedProgress(_ value: TimeInterval) -> Double {
+        min(1.0, max(0.0, value))
+    }
+
+    private var breakNextDueDate: Date? {
+        guard let lastBreak = breaksEvaluation.lastBreakEndedAt else { return nil }
+        return lastBreak.addingTimeInterval(breaksEvaluation.workWindowSeconds)
+    }
+
+    private func formattedDurationEmphasized(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let remainingSeconds = total % 60
+
+        if hours > 0 {
+            return String(format: "%dh %02dm", hours, minutes)
+        }
+        if minutes > 0 {
+            return String(format: "%dm %02ds", minutes, remainingSeconds)
+        }
+        return "\(remainingSeconds)s"
     }
 }
