@@ -6,7 +6,7 @@ struct BreaksConfig: Codable, Equatable {
     static let defaultRequiredBreakMinutes = 5
     static let minRequiredBreakMinutes = 1
     static let maxRequiredBreakMinutes = 60
-    static let minTimeBeforeReminderMinutes = 2
+    static let minTimeBeforeReminderMinutes = 1
 
     static let minLookbackMinutes = minRequiredBreakMinutes + minTimeBeforeReminderMinutes
     static let maxLookbackMinutes = 180

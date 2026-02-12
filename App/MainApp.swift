@@ -29,21 +29,24 @@ struct TendonTallyApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItemController: StatusItemController?
     private var aggregator: MetricsAggregator?
-    private let breakNotificationManager = BreakNotificationManager()
+    private var breakPillController: BreakPillController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Apply dock visibility setting on launch
         let settingsManager = SettingsManager.shared
         let showInDock = settingsManager.getShowInDock()
         settingsManager.setShowInDock(showInDock) // This applies the setting
-        
+
+        let pillController = BreakPillController()
+        self.breakPillController = pillController
+
         let aggregator = MetricsAggregator(
             restoredLastActivityAt: AppPreferences.shared.breakLastActivityAt
         )
         self.aggregator = aggregator
         let viewModel = MetricsViewModel(
             aggregator: aggregator,
-            breakNotificationManager: breakNotificationManager
+            breakPillController: pillController
         )
         
         // Share viewModel with the main window

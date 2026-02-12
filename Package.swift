@@ -39,7 +39,7 @@ let package = Package(
                 "Domain/SettingsManager.swift",
                 "Domain/TimeSeriesCalculator.swift",
                 "Domain/BreaksEvaluator.swift",
-                "Domain/BreakNotificationManager.swift",
+                "Domain/BreakPillController.swift",
                 // Domain protocols
                 "Domain/Protocols/EventTapping.swift",
                 "Domain/Protocols/MetricsPersisting.swift",
@@ -57,6 +57,7 @@ let package = Package(
                 "UI/FullDashboardView.swift",
                 "UI/SettingsView.swift",
                 "UI/BarChartView.swift",
+                "UI/BreakPillPanel.swift",
                 // UI - Extracted components
                 "UI/Components/MetricTile.swift",
                 "UI/Components/PermissionBanner.swift",
@@ -79,8 +80,7 @@ let package = Package(
                 .linkedFramework("SwiftUI", .when(platforms: [.macOS])),
                 .linkedFramework("AppKit", .when(platforms: [.macOS])),
                 .linkedFramework("CoreGraphics", .when(platforms: [.macOS])),
-                .linkedFramework("ServiceManagement", .when(platforms: [.macOS])),
-                .linkedFramework("UserNotifications", .when(platforms: [.macOS]))
+                .linkedFramework("ServiceManagement", .when(platforms: [.macOS]))
             ]
         ),
         // Test target compiles needed source files directly

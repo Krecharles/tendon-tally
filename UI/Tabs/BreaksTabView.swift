@@ -12,11 +12,14 @@ struct BreaksTabView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.primary)
 
-                explanationCard
+                if viewModel.breaksConfig.remindersEnabled {
+                    topStatusCard
+                }
                 remindersToggleRow
                 if viewModel.breaksConfig.remindersEnabled {
-                    managedSection
+                    breakRulesSection
                 }
+                explanationCard
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -86,12 +89,12 @@ struct BreaksTabView: View {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 12))
                     .foregroundColor(.blue)
-                Text("How Break Reminders Work")
+                Text("How Break Tracking Works")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.primary)
             }
 
-            Text("You set how long you can work and how long your break should be. After working too long, you'll get a reminder. Stop using your computer for the full break length to reset the timer.")
+            Text("Break progress is based on time since your last keystroke or mouse movement. Touch anything and the timer resets, so step away fully to complete a break.")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -107,18 +110,8 @@ struct BreaksTabView: View {
         )
     }
 
-    private var managedSection: some View {
+    private var breakRulesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            topStatusCard
-
-            if let notificationMessage = viewModel.breakNotificationStatusMessage,
-               viewModel.breakCardPhase == .due {
-                Text(notificationMessage)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: 560, alignment: .leading)
-            }
-
             Text("Break Rules")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.secondary)
@@ -128,7 +121,7 @@ struct BreaksTabView: View {
 
             VStack(spacing: 6) {
                 BreakConfigRow(
-                    title: "Time Before Break Reminder",
+                    title: "Work Duration",
                     value: workTimeBeforeReminderMinutes,
                     range: BreaksConfig.minTimeBeforeReminderMinutes...max(
                         BreaksConfig.minTimeBeforeReminderMinutes,
@@ -194,7 +187,7 @@ struct BreaksTabView: View {
     private var remindersToggleRow: some View {
         HStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "bell.badge")
+                Image(systemName: "cup.and.saucer")
                     .font(.system(size: 12))
                     .foregroundColor(.blue)
                     .frame(width: 24, height: 24)
@@ -202,10 +195,10 @@ struct BreaksTabView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Enable Break Reminders")
+                    Text("Enable Break Tracking")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.primary)
-                    Text("Send a local notification when no qualifying break is found.")
+                    Text("Show a floating pill when a break is due or in progress.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }

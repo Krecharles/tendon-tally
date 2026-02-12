@@ -26,18 +26,20 @@ final class MetricsViewModel: ObservableObject {
     }
     @Published private(set) var breaksConfig: BreaksConfig
     @Published private(set) var breaksEvaluation: BreaksEvaluation
-    @Published private(set) var breakNotificationStatusMessage: String?
-
+    @Published private(set) var breakResetWarning: Bool = false
     private let aggregator: MetricsAggregator
-    private let breakNotificationManager: BreakNotificationManager
+    private let breakPillController: BreakPillController
     private var breakTransitionTracker: BreakTransitionTracker
+    private var hasReceivedFirstAggregatorUpdate = false
+    private var previousBreakIdleSeconds: TimeInterval = 0
+    private var breakResetWarningCountdown: Int = 0
 
     init(
         aggregator: MetricsAggregator,
-        breakNotificationManager: BreakNotificationManager = BreakNotificationManager()
+        breakPillController: BreakPillController = BreakPillController()
     ) {
         self.aggregator = aggregator
-        self.breakNotificationManager = breakNotificationManager
+        self.breakPillController = breakPillController
         self.currentSample = aggregator.currentSample
         self.todayTotals = MetricsViewModel.computeTodayTotals(
             current: aggregator.currentSample,
@@ -64,11 +66,10 @@ final class MetricsViewModel: ObservableObject {
             lastActivityAt: aggregator.lastActivityAt ?? prefs.breakLastActivityAt,
             config: prefs.breaksConfig.normalized()
         )
-        self.breakNotificationStatusMessage = breakNotificationManager.statusMessage
-
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in
                 guard let self else { return }
+                self.hasReceivedFirstAggregatorUpdate = true
                 self.currentSample = current
                 self.recentHistory = Array(history.prefix(12))
                 self.todayTotals = MetricsViewModel.computeTodayTotals(current: current, history: history)
@@ -269,7 +270,7 @@ final class MetricsViewModel: ObservableObject {
         case .due:
             return "Break remaining"
         case .onBreak:
-            return "On break"
+            return "Break complete"
         }
     }
 
@@ -281,7 +282,7 @@ final class MetricsViewModel: ObservableObject {
             let remaining = max(0, breaksEvaluation.requiredBreakSeconds - breaksEvaluation.currentIdleSeconds)
             return formattedDurationEmphasized(remaining)
         case .onBreak:
-            return formattedDurationEmphasized(breaksEvaluation.currentIdleSeconds)
+            return formattedDurationEmphasized(breaksEvaluation.requiredBreakSeconds)
         }
     }
 
@@ -306,13 +307,17 @@ final class MetricsViewModel: ObservableObject {
         case .due:
             return breakDueProgressText
         case .onBreak:
-            return "Break in progress — stay idle to complete."
+            return "Well done! The timer resets when you return."
         }
     }
 
     var breakDueProgressText: String {
         let elapsed = min(breaksEvaluation.requiredBreakSeconds, breaksEvaluation.currentIdleSeconds)
-        return "\(formattedDuration(elapsed)) of \(formattedDuration(breaksEvaluation.requiredBreakSeconds)) break completed"
+        let base = "\(formattedDuration(elapsed)) of \(formattedDuration(breaksEvaluation.requiredBreakSeconds)) break completed"
+        if breakResetWarning {
+            return base + " — any input resets the timer"
+        }
+        return base
     }
 
     var breakTimeUntilDueDisplay: String {
@@ -341,11 +346,28 @@ final class MetricsViewModel: ObservableObject {
         )
         breaksEvaluation = evaluation
 
+        // Track idle drops to show reset warning only when user provides input
+        if evaluation.phase == .due {
+            if evaluation.currentIdleSeconds < previousBreakIdleSeconds - 1 {
+                breakResetWarningCountdown = 5
+            }
+            previousBreakIdleSeconds = evaluation.currentIdleSeconds
+            breakResetWarning = breakResetWarningCountdown > 0
+            if breakResetWarningCountdown > 0 { breakResetWarningCountdown -= 1 }
+        } else {
+            previousBreakIdleSeconds = 0
+            breakResetWarningCountdown = 0
+            breakResetWarning = false
+        }
+
         AppPreferences.shared.breakLastActivityAt = aggregator.lastActivityAt
         AppPreferences.shared.breakLastBreakEndedAt = breakTransitionTracker.lastBreakEndedAt
 
-        breakNotificationManager.handleEvaluation(evaluation, config: breaksConfig)
-        breakNotificationStatusMessage = breakNotificationManager.statusMessage
+        // Skip pill on startup — the stale persisted lastActivityAt produces a
+        // transient .onBreak/.due that corrects once the event tap fires (~1 s).
+        if hasReceivedFirstAggregatorUpdate {
+            breakPillController.update(evaluation: evaluation, config: breaksConfig)
+        }
     }
 
     private func formattedClockTime(_ date: Date) -> String {

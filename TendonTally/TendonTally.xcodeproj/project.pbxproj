@@ -39,8 +39,9 @@
 		AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001D /* PermissionsTabView.swift */; };
 		AB000001BBBB000000000001 /* Breaks.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000011 /* Breaks.swift */; };
 		AB000001BBBB000000000002 /* BreaksEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000012 /* BreaksEvaluator.swift */; };
-		AB000001BBBB000000000003 /* BreakNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000013 /* BreakNotificationManager.swift */; };
 		AB000001BBBB000000000004 /* BreaksTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000014 /* BreaksTabView.swift */; };
+		AC000001CCCC000000000001 /* BreakPillController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000001CCCC000000000011 /* BreakPillController.swift */; };
+		AC000001CCCC000000000002 /* BreakPillPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000001CCCC000000000012 /* BreakPillPanel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,8 +78,9 @@
 		AA000001AAAA00000000001D /* PermissionsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PermissionsTabView.swift; path = ../UI/Tabs/PermissionsTabView.swift; sourceTree = SOURCE_ROOT; };
 		AB000001BBBB000000000011 /* Breaks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Breaks.swift; path = ../Models/Breaks.swift; sourceTree = SOURCE_ROOT; };
 		AB000001BBBB000000000012 /* BreaksEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreaksEvaluator.swift; path = ../Domain/BreaksEvaluator.swift; sourceTree = SOURCE_ROOT; };
-		AB000001BBBB000000000013 /* BreakNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreakNotificationManager.swift; path = ../Domain/BreakNotificationManager.swift; sourceTree = SOURCE_ROOT; };
 		AB000001BBBB000000000014 /* BreaksTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreaksTabView.swift; path = ../UI/Tabs/BreaksTabView.swift; sourceTree = SOURCE_ROOT; };
+		AC000001CCCC000000000011 /* BreakPillController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreakPillController.swift; path = ../Domain/BreakPillController.swift; sourceTree = SOURCE_ROOT; };
+		AC000001CCCC000000000012 /* BreakPillPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BreakPillPanel.swift; path = ../UI/BreakPillPanel.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -129,7 +131,8 @@
 				2B956A262F2CD520004692F2 /* SettingsManager.swift */,
 				2BFFFF122F2D000000000003 /* TimeSeriesCalculator.swift */,
 				AB000001BBBB000000000012 /* BreaksEvaluator.swift */,
-				AB000001BBBB000000000013 /* BreakNotificationManager.swift */,
+				AC000001CCCC000000000011 /* BreakPillController.swift */,
+				AC000001CCCC000000000012 /* BreakPillPanel.swift */,
 				AA000001AAAA000000000010 /* EventTapping.swift */,
 				AA000001AAAA000000000011 /* MetricsPersisting.swift */,
 				AA000001AAAA000000000012 /* MetricsAggregating.swift */,
@@ -240,7 +243,6 @@
 				2BFFFF212F2D000000000005 /* MetricTypes.swift in Sources */,
 				2BFFFF222F2D000000000006 /* TimeSeriesCalculator.swift in Sources */,
 				AB000001BBBB000000000002 /* BreaksEvaluator.swift in Sources */,
-				AB000001BBBB000000000003 /* BreakNotificationManager.swift in Sources */,
 				2B956A292F2CD546004692F2 /* PersistenceController.swift in Sources */,
 				2B3B576D2F2A30000001626F /* UsageSample.swift in Sources */,
 				2B956A312F2CD827004692F2 /* AppState.swift in Sources */,
@@ -266,6 +268,8 @@
 				AA000001AAAA00000000000C /* KUITabView.swift in Sources */,
 				AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */,
 				AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */,
+				AC000001CCCC000000000001 /* BreakPillController.swift in Sources */,
+				AC000001CCCC000000000002 /* BreakPillPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
