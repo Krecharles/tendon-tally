@@ -18,7 +18,7 @@ struct BreaksConfig: Codable, Equatable {
     static let `default` = BreaksConfig(
         lookbackMinutes: defaultLookbackMinutes,
         requiredBreakMinutes: defaultRequiredBreakMinutes,
-        remindersEnabled: true
+        remindersEnabled: false
     )
 
     /// Clamps values to product bounds and enforces at least `minTimeBeforeReminderMinutes` before reminders.
