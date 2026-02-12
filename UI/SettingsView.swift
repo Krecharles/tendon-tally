@@ -108,8 +108,9 @@ struct SettingsView: View {
                             titleVisibility: .visible
                         ) {
                             Button("Delete", role: .destructive) {
-                                PersistenceController.shared.deleteAllSamples()
-                                viewModel?.reloadHistory()
+                                PersistenceController.shared.deleteAllSamples {
+                                    viewModel?.reloadHistory()
+                                }
                             }
                             Button("Cancel", role: .cancel) {}
                         } message: {

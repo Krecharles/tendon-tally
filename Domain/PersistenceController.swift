@@ -3,7 +3,7 @@ import os.log
 
 /// JSON-backed persistence layer for storing usage samples.
 ///
-/// This controller manages saving and loading of finalized 5-minute usage windows
+/// This controller manages saving and loading of finalized 1-minute usage windows
 /// and the current in-progress sample. Data is stored in daily files in the user's Application Support directory.
 final class PersistenceController {
     static let shared = PersistenceController()
@@ -28,16 +28,20 @@ final class PersistenceController {
         var currentSample: UsageSample
     }
 
-    private init() {
+    init(dataDirectory: URL? = nil) {
         let fm = FileManager.default
-        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-
-        let dir = appSupport.appendingPathComponent("TendonTally", isDirectory: true)
+        let dir = dataDirectory ?? Self.defaultDataDirectory()
         if !fm.fileExists(atPath: dir.path) {
             try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
         }
         self.dataDirectory = dir
+    }
+
+    private static func defaultDataDirectory() -> URL {
+        let fm = FileManager.default
+        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        return appSupport.appendingPathComponent("TendonTally", isDirectory: true)
     }
 
     /// Get the file URL for a specific date's samples
@@ -180,29 +184,44 @@ final class PersistenceController {
         }
     }
 
-    /// Delete all stored samples from disk.
-    func deleteAllSamples() {
+    /// Delete all stored samples from disk asynchronously.
+    func deleteAllSamples(completion: (() -> Void)? = nil) {
         queue.async {
-            let fm = FileManager.default
-            do {
-                let files = try fm.contentsOfDirectory(at: self.dataDirectory, includingPropertiesForKeys: nil)
-                let dailyFiles = files.filter { $0.lastPathComponent.hasPrefix("usage_") && $0.lastPathComponent.hasSuffix(".json") }
-                for fileURL in dailyFiles {
-                    try? fm.removeItem(at: fileURL)
-                }
-
-                if fm.fileExists(atPath: self.currentSampleURL.path) {
-                    try fm.removeItem(at: self.currentSampleURL)
-                }
-
-                self.logger.info("Deleted all stored samples")
-            } catch {
-                self.logger.error("Failed to delete samples: \(error.localizedDescription)")
+            self.removeAllSamplesOnQueue()
+            guard let completion else { return }
+            DispatchQueue.main.async {
+                completion()
             }
         }
     }
 
-    /// Generate test data for the last 4 days with 5-minute intervals.
+    /// Delete all stored samples from disk synchronously.
+    func deleteAllSamplesSync() {
+        queue.sync {
+            self.removeAllSamplesOnQueue()
+        }
+    }
+
+    private func removeAllSamplesOnQueue() {
+        let fm = FileManager.default
+        do {
+            let files = try fm.contentsOfDirectory(at: self.dataDirectory, includingPropertiesForKeys: nil)
+            let dailyFiles = files.filter { $0.lastPathComponent.hasPrefix("usage_") && $0.lastPathComponent.hasSuffix(".json") }
+            for fileURL in dailyFiles {
+                try? fm.removeItem(at: fileURL)
+            }
+
+            if fm.fileExists(atPath: self.currentSampleURL.path) {
+                try fm.removeItem(at: self.currentSampleURL)
+            }
+
+            self.logger.info("Deleted all stored samples")
+        } catch {
+            self.logger.error("Failed to delete samples: \(error.localizedDescription)")
+        }
+    }
+
+    /// Generate test data for the last 4 days with 1-minute intervals.
     func generateTestData() {
         queue.async {
             let calendar = Calendar.current
@@ -213,8 +232,8 @@ final class PersistenceController {
                 let startOfDay = calendar.startOfDay(for: dayStart)
                 var daySamples: [UsageSample] = []
 
-                let intervalsPerDay = 288
-                let intervalLength: TimeInterval = 5 * 60
+                let intervalsPerDay = 1_440
+                let intervalLength: TimeInterval = 60
 
                 for intervalIndex in 0..<intervalsPerDay {
                     let intervalStart = startOfDay.addingTimeInterval(TimeInterval(intervalIndex) * intervalLength)

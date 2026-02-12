@@ -1,4 +1,5 @@
 import XCTest
+@testable import TendonTally
 
 final class TimeSeriesCalculatorTests: XCTestCase {
 

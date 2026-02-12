@@ -1,4 +1,5 @@
 import XCTest
+@testable import TendonTally
 
 final class MetricTypesTests: XCTestCase {
 
@@ -43,9 +44,18 @@ final class MetricTypesTests: XCTestCase {
 
         // Should span approximately 30 days
         let span = end.timeIntervalSince(start)
-        XCTAssertGreaterThan(span, 27 * 24 * 60 * 60) // at least 27 days
-        XCTAssertLessThan(span, 32 * 24 * 60 * 60) // at most 32 days
+        XCTAssertEqual(span, 30 * 24 * 60 * 60, accuracy: 1.0)
         XCTAssertLessThan(abs(end.timeIntervalSince(now)), 1.0)
+    }
+
+    func testMonthDateRangeOffsetNeg1IsPreviousRollingWindow() {
+        let (currentStart, _) = TimeFrame.lastMonth.dateRange(offset: 0)
+        let (_, previousEnd) = TimeFrame.lastMonth.dateRange(offset: -1)
+        XCTAssertEqual(
+            currentStart.timeIntervalSinceReferenceDate,
+            previousEnd.timeIntervalSinceReferenceDate,
+            accuracy: 1.0
+        )
     }
 
     // MARK: - KUIConfig

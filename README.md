@@ -7,7 +7,7 @@ This project is a Swift + SwiftUI based macOS menu bar application that helps yo
 - **Scroll events and approximate scroll distance**
 - **Mouse movement distance**
 
-Activity is tracked in **rolling 5‑minute windows**, and a simple **dashboard** in a popover shows the current window and recent history. The architecture is inspired by the open‑source project [OctoMouse](https://github.com/KonsomeJona/OctoMouse), but implemented in Swift with SwiftUI and an AppKit bridge.
+Activity is tracked in **rolling 1‑minute windows**, and a simple **dashboard** in a popover shows the current window and recent history. The architecture is inspired by the open‑source project [OctoMouse](https://github.com/KonsomeJona/OctoMouse), but implemented in Swift with SwiftUI and an AppKit bridge.
 
 ### Project layout
 
@@ -60,4 +60,3 @@ To enable global keyboard and mouse monitoring, you must grant the app **Accessi
 > System Settings → Privacy & Security → Accessibility / Input Monitoring
 
 The app will show an in‑app explanation and instructions if permissions are missing.
-

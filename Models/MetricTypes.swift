@@ -41,29 +41,13 @@ enum TimeFrame: String, CaseIterable {
             let startDate = calendar.date(byAdding: .day, value: -7, to: endDate) ?? endDate
             return (start: startDate, end: endDate)
         case .lastMonth:
-            // For offset 0: last month ending now
-            // For offset -1: previous month
-            // For offset -2: month before that
-            let monthsOffset = offset
-            let endDate: Date
-            if offset == 0 {
-                endDate = now
-            } else {
-                // For past months, end at the end of that month
-                let monthStart = calendar.date(byAdding: .month, value: monthsOffset, to: now) ?? now
-                let monthStartDay = calendar.startOfDay(for: monthStart)
-                let monthComponents = calendar.dateComponents([.year, .month], from: monthStartDay)
-                if let firstDayOfMonth = calendar.date(from: monthComponents),
-                   let lastDayOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: firstDayOfMonth) {
-                    endDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastDayOfMonth) ?? lastDayOfMonth
-                } else {
-                    endDate = monthStart
-                }
-            }
-            if let startDate = calendar.date(byAdding: .month, value: -1, to: endDate) {
-                return (start: startDate, end: endDate)
-            }
-            return (start: endDate.addingTimeInterval(-30 * 24 * 60 * 60), end: endDate)
+            // Rolling 30-day windows.
+            // offset 0: [now-30d, now]
+            // offset -1: previous 30-day window
+            let windowDays = 30
+            let windowSeconds = TimeInterval(windowDays * 24 * 60 * 60)
+            let shiftedEnd = now.addingTimeInterval(TimeInterval(offset * windowDays) * 24 * 60 * 60)
+            return (start: shiftedEnd.addingTimeInterval(-windowSeconds), end: shiftedEnd)
         }
     }
 }

@@ -9,6 +9,28 @@ import os.log
 /// All tracking is passive (listen-only) and does not record key contents, only counts.
 /// Follows OctoMouse's approach: https://github.com/KonsomeJona/OctoMouse
 final class EventTapManager {
+    struct PermissionStatus: Equatable {
+        let accessibilityGranted: Bool
+        let inputMonitoringGranted: Bool
+
+        var allRequiredGranted: Bool {
+            accessibilityGranted && inputMonitoringGranted
+        }
+
+        var guidanceMessage: String {
+            switch (accessibilityGranted, inputMonitoringGranted) {
+            case (false, false):
+                return "Accessibility and Input Monitoring permissions are required to monitor keyboard and mouse activity."
+            case (false, true):
+                return "Accessibility permission is required to monitor keyboard and mouse activity."
+            case (true, false):
+                return "Input Monitoring permission is required to count keyboard activity."
+            case (true, true):
+                return ""
+            }
+        }
+    }
+
     private var globalMonitors: [Any] = []
     private var localMonitors: [Any] = []
 
@@ -38,13 +60,13 @@ final class EventTapManager {
     private func registerMonitors() {
         guard !hasRegisteredMonitors else { return }
 
-        // Check if we can create an event tap as a permission probe.
-        // NSEvent global monitors silently fail without permissions,
-        // so we use a CGEvent tap check to detect missing permissions.
-        let hasPermission = checkAccessibilityPermission()
+        // NSEvent global monitors can fail silently when permissions are missing.
+        // Probe both required permissions before registering monitors.
+        let status = Self.probePermissionStatus()
+        logger.info("Permission probe - Accessibility: \(status.accessibilityGranted), Input Monitoring: \(status.inputMonitoringGranted)")
 
-        if !hasPermission {
-            onPermissionOrTapFailure?("Unable to monitor input events. Check Accessibility / Input Monitoring permissions.")
+        if !status.allRequiredGranted {
+            onPermissionOrTapFailure?(status.guidanceMessage)
             startRetryTimer()
             return
         }
@@ -173,10 +195,34 @@ final class EventTapManager {
         }
     }
 
-    private func checkAccessibilityPermission() -> Bool {
-        let trusted = AXIsProcessTrusted()
-        logger.info("AXIsProcessTrusted: \(trusted)")
-        return trusted
+    static func probePermissionStatus() -> PermissionStatus {
+        PermissionStatus(
+            accessibilityGranted: isAccessibilityGranted(),
+            inputMonitoringGranted: isInputMonitoringGranted()
+        )
+    }
+
+    static func isAccessibilityGranted() -> Bool {
+        AXIsProcessTrusted()
+    }
+
+    static func isInputMonitoringGranted() -> Bool {
+        let probeMask: CGEventMask = 1 << CGEventMask(CGEventType.keyDown.rawValue)
+        guard let probe = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: probeMask,
+            callback: { _, _, event, _ in
+                Unmanaged.passUnretained(event)
+            },
+            userInfo: nil
+        ) else {
+            return false
+        }
+
+        CFMachPortInvalidate(probe)
+        return true
     }
 
     private func startRetryTimer() {

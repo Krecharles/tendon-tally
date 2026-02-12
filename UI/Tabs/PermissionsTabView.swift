@@ -4,8 +4,8 @@ import Combine
 
 struct PermissionsTabView: View {
     let message: String
-    @State private var accessibilityGranted = AXIsProcessTrusted()
-    @State private var inputMonitoringGranted = false
+    @State private var accessibilityGranted = EventTapManager.isAccessibilityGranted()
+    @State private var inputMonitoringGranted = EventTapManager.isInputMonitoringGranted()
 
     private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
@@ -31,6 +31,14 @@ struct PermissionsTabView: View {
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: 420)
+
+                        if !message.isEmpty {
+                            Text(message)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 420)
+                        }
                     }
 
                     // Permission cards
@@ -59,7 +67,7 @@ struct PermissionsTabView: View {
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
 
-                                Text("Restart TendonTally after granting permissions for changes to take effect.")
+                                Text("Permission status is rechecked automatically every few seconds.")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
                             }
@@ -158,21 +166,9 @@ struct PermissionsTabView: View {
     }
 
     private func refreshPermissionStatus() {
-        accessibilityGranted = AXIsProcessTrusted()
-        let probeMask: CGEventMask = 1 << CGEventMask(CGEventType.keyDown.rawValue)
-        if let probe = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: probeMask,
-            callback: { _, _, event, _ in Unmanaged.passUnretained(event) },
-            userInfo: nil
-        ) {
-            CFMachPortInvalidate(probe)
-            inputMonitoringGranted = true
-        } else {
-            inputMonitoringGranted = false
-        }
+        let status = EventTapManager.probePermissionStatus()
+        accessibilityGranted = status.accessibilityGranted
+        inputMonitoringGranted = status.inputMonitoringGranted
     }
 
     private func openAccessibilitySettings() {

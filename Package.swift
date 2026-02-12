@@ -22,6 +22,7 @@ let package = Package(
                 "TendonTally/TendonTally.xcodeproj",
                 "TendonTally/TendonTally/TendonTally.icon",
                 "README.md",
+                "AGENTS.md",
                 "CLAUDE.md",
                 "assets",
                 "run.sh",
@@ -83,10 +84,10 @@ let package = Package(
                 .linkedFramework("ServiceManagement", .when(platforms: [.macOS]))
             ]
         ),
-        // Test target compiles needed source files directly
+        // Test target imports and exercises the real application module
         .testTarget(
             name: "TendonTallyTests",
-            dependencies: [],
+            dependencies: ["TendonTally"],
             path: "Tests",
             linkerSettings: [
                 .linkedFramework("CoreGraphics", .when(platforms: [.macOS]))

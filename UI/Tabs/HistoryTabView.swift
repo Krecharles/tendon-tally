@@ -160,8 +160,18 @@ struct HistoryTabView: View {
                     return "\(startStr) \u{2013} \(endStrWithYear)"
                 }
             case .lastMonth:
-                formatter.dateFormat = "MMMM yyyy"
-                return formatter.string(from: startDate)
+                formatter.dateFormat = "MMM d"
+                let startStr = formatter.string(from: startDate)
+                let endStr = formatter.string(from: endDate)
+                let startYear = calendar.component(.year, from: startDate)
+                let endYear = calendar.component(.year, from: endDate)
+                if startYear == endYear {
+                    return "\(startStr) \u{2013} \(endStr)"
+                } else {
+                    formatter.dateFormat = "MMM d, yyyy"
+                    let endStrWithYear = formatter.string(from: endDate)
+                    return "\(startStr) \u{2013} \(endStrWithYear)"
+                }
             }
         }
     }

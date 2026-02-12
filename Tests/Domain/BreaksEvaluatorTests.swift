@@ -1,4 +1,5 @@
 import XCTest
+@testable import TendonTally
 
 final class BreaksEvaluatorTests: XCTestCase {
     private let defaultConfig = BreaksConfig.default // 30m lookback, 5m break
