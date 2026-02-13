@@ -65,6 +65,8 @@ final class BreakPillPanel: NSPanel {
 
 struct BreakPillView: View {
     @ObservedObject var controller: BreakPillController
+    @State private var celebrationScale: CGFloat = 0
+    @State private var glowPulsing: Bool = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -82,12 +84,35 @@ struct BreakPillView: View {
                     .font(.system(size: 15, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText())
+                    .animation(.snappy, value: controller.primaryText)
 
                 if controller.phase == .onBreak || controller.phase == .due {
                     ProgressView(value: controller.progress)
                         .progressViewStyle(.linear)
                         .frame(width: 80)
                         .tint(phaseColor)
+                        .animation(.linear(duration: 0.8), value: controller.progress)
+                }
+
+                if controller.showCelebration {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.green)
+                        .scaleEffect(celebrationScale)
+                        .onAppear {
+                            celebrationScale = 0
+                            glowPulsing = false
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
+                                celebrationScale = 1
+                            }
+                            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true).delay(0.3)) {
+                                glowPulsing = true
+                            }
+                        }
+                        .onDisappear {
+                            celebrationScale = 0
+                            glowPulsing = false
+                        }
                 }
             }
 
@@ -99,12 +124,17 @@ struct BreakPillView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: controller.showResetWarning)
+        .animation(.default, value: controller.showCelebration)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
         .overlay(
             RoundedRectangle(cornerRadius: 22)
                 .strokeBorder(.quaternary, lineWidth: 0.5)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .strokeBorder(Color.green.opacity(glowPulsing ? 0.6 : 0), lineWidth: 1.5)
         )
     }
 

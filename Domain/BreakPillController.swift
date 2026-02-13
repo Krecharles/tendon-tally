@@ -8,6 +8,7 @@ final class BreakPillController: ObservableObject {
     @Published var primaryText: String = ""
     @Published var progress: Double = 0.0
     @Published var showResetWarning: Bool = false
+    @Published var showCelebration: Bool = false
 
     private var panels: [BreakPillPanel] = []
     private var isVisible = false
@@ -28,6 +29,7 @@ final class BreakPillController: ObservableObject {
 
         switch evaluation.phase {
         case .work:
+            showCelebration = false
             hide()
             return
 
@@ -42,6 +44,7 @@ final class BreakPillController: ObservableObject {
             // Show warning when idle time drops — the user just provided input that reset the break timer.
             if evaluation.currentIdleSeconds < previousIdleSeconds - 1 {
                 resetWarningCountdown = 5
+                playSound(.reset)
             }
             previousIdleSeconds = evaluation.currentIdleSeconds
             if resetWarningCountdown > 0 {
@@ -52,6 +55,19 @@ final class BreakPillController: ObservableObject {
             }
 
         case .onBreak:
+            // If the user becomes idle for the required break time while still in the
+            // normal work phase, don't show the "break complete" pill.
+            if oldPhase == .work {
+                previousIdleSeconds = 0
+                resetWarningCountdown = 0
+                showResetWarning = false
+                showCelebration = false
+                hide()
+                return
+            }
+            if oldPhase == .due {
+                showCelebration = true
+            }
             if oldPhase != .onBreak {
                 playSound(.hero)
             }
@@ -120,4 +136,5 @@ final class BreakPillController: ObservableObject {
 private extension NSSound.Name {
     static let tink = NSSound.Name("Tink")
     static let hero = NSSound.Name("Hero")
+    static let reset = NSSound.Name("Ping")
 }
