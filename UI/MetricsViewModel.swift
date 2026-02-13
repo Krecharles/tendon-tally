@@ -31,6 +31,8 @@ final class MetricsViewModel: ObservableObject {
     private let breakPillController: BreakPillController
     private var breakTransitionTracker: BreakTransitionTracker
     private var hasReceivedFirstAggregatorUpdate = false
+    private let launchDate: Date
+    private var hasObservedPostLaunchActivity = false
     private var previousBreakIdleSeconds: TimeInterval = 0
     private var breakResetWarningCountdown: Int = 0
 
@@ -51,6 +53,7 @@ final class MetricsViewModel: ObservableObject {
         self.selectedMetric = prefs.selectedMetric
         self.kuiConfig = prefs.kuiConfig
         self.breaksConfig = prefs.breaksConfig.normalized()
+        self.launchDate = Date()
 
         // Restore transition tracker from persisted state
         var tracker = BreakTransitionTracker()
@@ -363,9 +366,14 @@ final class MetricsViewModel: ObservableObject {
         AppPreferences.shared.breakLastActivityAt = aggregator.lastActivityAt
         AppPreferences.shared.breakLastBreakEndedAt = breakTransitionTracker.lastBreakEndedAt
 
-        // Skip pill on startup — the stale persisted lastActivityAt produces a
-        // transient .onBreak/.due that corrects once the event tap fires (~1 s).
-        if hasReceivedFirstAggregatorUpdate {
+        // Start pill updates only after actual post-launch input has been observed.
+        // On startup, restored activity timestamps can briefly produce stale
+        // .onBreak/.due transitions and startup sounds.
+        if let lastActivityAt = aggregator.lastActivityAt, lastActivityAt >= launchDate {
+            hasObservedPostLaunchActivity = true
+        }
+
+        if hasReceivedFirstAggregatorUpdate && hasObservedPostLaunchActivity {
             breakPillController.update(evaluation: evaluation, config: breaksConfig)
         }
     }

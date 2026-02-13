@@ -145,4 +145,44 @@ final class MetricsAggregatorTests: XCTestCase {
         await fulfillment(of: [grantedExpectation], timeout: 1.0)
         XCTAssertNil(viewModel.permissionIssueMessage)
     }
+
+    @MainActor
+    func testBreakPillDoesNotShowFromRestoredStartupIdleState() async {
+        let originalBreaksConfig = AppPreferences.shared.breaksConfig
+        let originalLastActivityAt = AppPreferences.shared.breakLastActivityAt
+        let originalLastBreakEndedAt = AppPreferences.shared.breakLastBreakEndedAt
+        defer {
+            AppPreferences.shared.breaksConfig = originalBreaksConfig
+            AppPreferences.shared.breakLastActivityAt = originalLastActivityAt
+            AppPreferences.shared.breakLastBreakEndedAt = originalLastBreakEndedAt
+        }
+
+        let restoredLastActivity = Date().addingTimeInterval(-10 * 60)
+        AppPreferences.shared.breaksConfig = BreaksConfig(
+            lookbackMinutes: 30,
+            requiredBreakMinutes: 5,
+            remindersEnabled: true
+        )
+        AppPreferences.shared.breakLastActivityAt = restoredLastActivity
+        AppPreferences.shared.breakLastBreakEndedAt = nil
+
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(
+            eventTapManager: eventTap,
+            persistence: persistence,
+            restoredLastActivityAt: restoredLastActivity
+        )
+        let breakPillController = BreakPillController()
+        _ = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: breakPillController
+        )
+
+        aggregator.start()
+        defer { aggregator.stop() }
+
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(breakPillController.phase, .work)
+    }
 }
