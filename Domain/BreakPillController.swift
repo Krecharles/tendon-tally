@@ -55,27 +55,14 @@ final class BreakPillController: ObservableObject {
             }
 
         case .onBreak:
-            // If the user becomes idle for the required break time while still in the
-            // normal work phase, don't show the "break complete" pill.
-            if oldPhase == .work {
-                previousIdleSeconds = 0
-                resetWarningCountdown = 0
-                showResetWarning = false
-                showCelebration = false
-                hide()
-                return
-            }
-            if oldPhase == .due {
-                showCelebration = true
-            }
-            if oldPhase != .onBreak {
-                playSound(.hero)
-            }
+            // Completing a break via inactivity should be silent:
+            // no celebration state, no completion sound, no visible pill.
             previousIdleSeconds = 0
             resetWarningCountdown = 0
             showResetWarning = false
-            primaryText = "Done"
-            progress = 1.0
+            showCelebration = false
+            hide()
+            return
         }
 
         show()
@@ -135,6 +122,5 @@ final class BreakPillController: ObservableObject {
 
 private extension NSSound.Name {
     static let tink = NSSound.Name("Tink")
-    static let hero = NSSound.Name("Hero")
     static let reset = NSSound.Name("Ping")
 }
