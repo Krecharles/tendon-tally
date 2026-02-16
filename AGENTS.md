@@ -24,6 +24,16 @@ swift test         # Run tests
 ./run.sh          # Convenience script
 ```
 
+## Release Packaging
+
+- Drop exported app bundle at `release-input/TendonTally.app`
+- Build DMG with `./make-dmg.sh v1` (replace `v1` with release version label)
+- Output DMG is written to `release-output/TendonTally-v1.dmg`
+- Script applies drag-to-Applications DMG layout with no background by default
+- Script blesses the mounted volume so Finder opens the install window on mount
+- Optional custom background: `BACKGROUND_IMAGE=/path/to/background.png ./make-dmg.sh v1`
+- Optional icon layout tweak: `ICON_LEFT_X=220 ICON_RIGHT_X=580 ICON_Y=230 ./make-dmg.sh v1`
+
 ## Build System
 
 - **Primary:** Swift Package Manager (Package.swift)
