@@ -11,7 +11,9 @@ struct TendonTallyApp: App {
     /// Using Window instead of WindowGroup for single-instance utility window that can be reopened.
     var body: some Scene {
         Window("Dashboard", id: "main-dashboard") {
-            if let viewModel = appState.viewModel {
+            if appState.isBetaExpired {
+                BetaExpiredView()
+            } else if let viewModel = appState.viewModel {
                 FullDashboardView(viewModel: viewModel)
             } else {
                 ProgressView("Loading...")
@@ -32,6 +34,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var breakPillController: BreakPillController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if BetaAccessPolicy.isExpired() {
+            AppState.shared.setBetaExpired(true)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            return
+        }
+
         // Apply dock visibility setting on launch
         let settingsManager = SettingsManager.shared
         let showInDock = settingsManager.getShowInDock()
@@ -69,6 +77,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        if AppState.shared.isBetaExpired {
+            return true
+        }
         // Menu bar apps should keep running when the window is closed
         return false
     }
@@ -80,5 +91,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApplication.shared.activate(ignoringOtherApps: true)
         }
         return true
+    }
+}
+
+enum BetaAccessPolicy {
+    static func isExpired(now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard let cutoffDate = calendar.date(from: DateComponents(year: 2026, month: 3, day: 1)) else {
+            return false
+        }
+        return now >= cutoffDate
+    }
+}
+
+private struct BetaExpiredView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("TendonTally Beta Has Ended")
+                .font(.system(size: 28, weight: .bold))
+
+            Text("This beta ended on March 1, 2026. Thanks for testing TendonTally.")
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
+
+            Text("For release details and next steps, visit:")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+
+            Link("tendontally.com", destination: URL(string: "https://tendontally.com")!)
+                .font(.system(size: 15, weight: .semibold))
+        }
+        .padding(28)
+        .frame(minWidth: 560, minHeight: 260, alignment: .topLeading)
     }
 }
