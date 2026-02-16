@@ -226,4 +226,37 @@ final class BreaksEvaluatorTests: XCTestCase {
 
         XCTAssertEqual(tracker.lastBreakEndedAt, persistedBreakEnd)
     }
+
+    // MARK: - Snooze options
+
+    func testSnoozeOptionFiveMinutesAddsExpectedInterval() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let until = BreakReminderSnoozeOption.fiveMinutes.snoozedUntil(from: now)
+        XCTAssertEqual(until.timeIntervalSince(now), 5 * 60, accuracy: 0.1)
+    }
+
+    func testSnoozeOptionUntilTomorrowUsesNextMidnight() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(
+            year: 2026,
+            month: 2,
+            day: 16,
+            hour: 18,
+            minute: 30,
+            second: 0
+        ))!
+
+        let until = BreakReminderSnoozeOption.untilTomorrow.snoozedUntil(from: now, calendar: calendar)
+        let expected = calendar.date(from: DateComponents(
+            year: 2026,
+            month: 2,
+            day: 17,
+            hour: 0,
+            minute: 0,
+            second: 0
+        ))!
+
+        XCTAssertEqual(until, expected)
+    }
 }

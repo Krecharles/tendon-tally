@@ -151,10 +151,12 @@ final class MetricsAggregatorTests: XCTestCase {
         let originalBreaksConfig = AppPreferences.shared.breaksConfig
         let originalLastActivityAt = AppPreferences.shared.breakLastActivityAt
         let originalLastBreakEndedAt = AppPreferences.shared.breakLastBreakEndedAt
+        let originalSnoozedUntil = AppPreferences.shared.breakRemindersSnoozedUntil
         defer {
             AppPreferences.shared.breaksConfig = originalBreaksConfig
             AppPreferences.shared.breakLastActivityAt = originalLastActivityAt
             AppPreferences.shared.breakLastBreakEndedAt = originalLastBreakEndedAt
+            AppPreferences.shared.breakRemindersSnoozedUntil = originalSnoozedUntil
         }
 
         let restoredLastActivity = Date().addingTimeInterval(-10 * 60)
@@ -184,5 +186,52 @@ final class MetricsAggregatorTests: XCTestCase {
 
         try? await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertEqual(breakPillController.phase, .work)
+    }
+
+    @MainActor
+    func testBreakPillSnoozeRequestPersistsUntilDate() {
+        let originalSnoozedUntil = AppPreferences.shared.breakRemindersSnoozedUntil
+        defer { AppPreferences.shared.breakRemindersSnoozedUntil = originalSnoozedUntil }
+        AppPreferences.shared.breakRemindersSnoozedUntil = nil
+
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(eventTapManager: eventTap, persistence: persistence)
+        let breakPillController = BreakPillController()
+        let viewModel = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: breakPillController
+        )
+        XCTAssertNotNil(viewModel)
+
+        breakPillController.requestSnooze(.fiveMinutes)
+
+        guard let snoozedUntil = AppPreferences.shared.breakRemindersSnoozedUntil else {
+            return XCTFail("Expected snooze date to be persisted")
+        }
+        XCTAssertGreaterThanOrEqual(snoozedUntil, Date().addingTimeInterval(4 * 60))
+    }
+
+    @MainActor
+    func testCancelBreakReminderSnoozeClearsPersistedDate() {
+        let originalSnoozedUntil = AppPreferences.shared.breakRemindersSnoozedUntil
+        defer { AppPreferences.shared.breakRemindersSnoozedUntil = originalSnoozedUntil }
+        AppPreferences.shared.breakRemindersSnoozedUntil = nil
+
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(eventTapManager: eventTap, persistence: persistence)
+        let breakPillController = BreakPillController()
+        let viewModel = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: breakPillController
+        )
+
+        viewModel.startBreakReminderSnooze(.oneHour)
+        XCTAssertNotNil(AppPreferences.shared.breakRemindersSnoozedUntil)
+
+        viewModel.cancelBreakReminderSnooze()
+        XCTAssertNil(AppPreferences.shared.breakRemindersSnoozedUntil)
+        XCTAssertFalse(viewModel.breakRemindersAreSnoozed)
     }
 }

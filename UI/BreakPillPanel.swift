@@ -114,6 +114,24 @@ struct BreakPillView: View {
                             glowPulsing = false
                         }
                 }
+
+                if controller.phase == .due {
+                    Menu {
+                        ForEach(BreakReminderSnoozeOption.allCases, id: \.title) { option in
+                            Button(option.title) {
+                                controller.requestSnooze(option)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "zzz")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(6)
+                            .background(Color.secondary.opacity(0.15), in: Circle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .help("Snooze break reminders")
+                }
             }
 
             if controller.showResetWarning {

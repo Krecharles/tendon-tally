@@ -20,6 +20,7 @@ final class AppPreferences {
         static let breaksConfig = "breaksConfig"
         static let breakLastActivityAt = "breakLastActivityAt"
         static let breakLastBreakEndedAt = "breakLastBreakEndedAt"
+        static let breakRemindersSnoozedUntil = "breakRemindersSnoozedUntil"
     }
 
     // MARK: - Time Frame
@@ -111,5 +112,10 @@ final class AppPreferences {
     var breakLastBreakEndedAt: Date? {
         get { defaults.object(forKey: Keys.breakLastBreakEndedAt) as? Date }
         set { defaults.set(newValue, forKey: Keys.breakLastBreakEndedAt) }
+    }
+
+    var breakRemindersSnoozedUntil: Date? {
+        get { defaults.object(forKey: Keys.breakRemindersSnoozedUntil) as? Date }
+        set { defaults.set(newValue, forKey: Keys.breakRemindersSnoozedUntil) }
     }
 }

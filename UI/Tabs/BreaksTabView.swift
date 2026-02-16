@@ -12,11 +12,10 @@ struct BreaksTabView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.primary)
 
-                if viewModel.breaksConfig.remindersEnabled {
-                    topStatusCard
-                }
                 remindersToggleRow
                 if viewModel.breaksConfig.remindersEnabled {
+                    topStatusCard
+                    snoozeControlsCard
                     breakRulesSection
                 }
                 explanationCard
@@ -161,6 +160,60 @@ struct BreaksTabView: View {
             .frame(maxWidth: 560)
         }
         .frame(maxWidth: 560, alignment: .leading)
+    }
+
+    private var snoozeControlsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Reminder Snooze")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            HStack(spacing: 8) {
+                Button("Snooze 5m") {
+                    viewModel.startBreakReminderSnooze(.fiveMinutes)
+                }
+                Button("Snooze 1h") {
+                    viewModel.startBreakReminderSnooze(.oneHour)
+                }
+                Button("Until tomorrow") {
+                    viewModel.startBreakReminderSnooze(.untilTomorrow)
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            if let statusText = viewModel.breakReminderSnoozeStatusText {
+                HStack(spacing: 8) {
+                    Image(systemName: "zzz")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Text(statusText)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Resume now") {
+                        viewModel.cancelBreakReminderSnooze()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            } else {
+                Text("No active snooze.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: 560, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+        )
     }
 
     private var workTimeBeforeReminderMinutes: Int {

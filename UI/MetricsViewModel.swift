@@ -35,6 +35,7 @@ final class MetricsViewModel: ObservableObject {
     private var hasObservedPostLaunchActivity = false
     private var previousBreakIdleSeconds: TimeInterval = 0
     private var breakResetWarningCountdown: Int = 0
+    private var breakRemindersSnoozedUntil: Date?
 
     init(
         aggregator: MetricsAggregator,
@@ -53,6 +54,7 @@ final class MetricsViewModel: ObservableObject {
         self.selectedMetric = prefs.selectedMetric
         self.kuiConfig = prefs.kuiConfig
         self.breaksConfig = prefs.breaksConfig.normalized()
+        self.breakRemindersSnoozedUntil = prefs.breakRemindersSnoozedUntil
         self.launchDate = Date()
 
         // Restore transition tracker from persisted state
@@ -69,6 +71,11 @@ final class MetricsViewModel: ObservableObject {
             lastActivityAt: aggregator.lastActivityAt ?? prefs.breakLastActivityAt,
             config: prefs.breaksConfig.normalized()
         )
+
+        self.breakPillController.onSnoozeRequested = { [weak self] option in
+            self?.startBreakReminderSnooze(option)
+        }
+
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in
                 guard let self else { return }
@@ -213,6 +220,19 @@ final class MetricsViewModel: ObservableObject {
         evaluateBreaksAndHandleReminder()
     }
 
+    func startBreakReminderSnooze(_ option: BreakReminderSnoozeOption) {
+        let snoozedUntil = option.snoozedUntil()
+        breakRemindersSnoozedUntil = snoozedUntil
+        AppPreferences.shared.breakRemindersSnoozedUntil = snoozedUntil
+        breakPillController.suppressForSnooze()
+    }
+
+    func cancelBreakReminderSnooze() {
+        breakRemindersSnoozedUntil = nil
+        AppPreferences.shared.breakRemindersSnoozedUntil = nil
+        evaluateBreaksAndHandleReminder()
+    }
+
     func comparisonStats(for timeFrame: TimeFrame, offset: Int) -> (currentTotal: Double, percentageChange: Double?, hasPriorData: Bool) {
         let current = aggregatedMetrics(for: timeFrame, offset: offset)
         let prior = aggregatedMetrics(for: timeFrame, offset: offset - 1)
@@ -257,6 +277,15 @@ final class MetricsViewModel: ObservableObject {
 
     var breakCardPhase: BreakPhase {
         breaksEvaluation.phase
+    }
+
+    var breakRemindersAreSnoozed: Bool {
+        activeBreakReminderSnoozedUntil() != nil
+    }
+
+    var breakReminderSnoozeStatusText: String? {
+        guard let snoozedUntil = activeBreakReminderSnoozedUntil() else { return nil }
+        return "Reminders snoozed until \(formattedClockTime(snoozedUntil))."
     }
 
     var breakLastQualifyingBreakText: String {
@@ -374,8 +403,26 @@ final class MetricsViewModel: ObservableObject {
         }
 
         if hasReceivedFirstAggregatorUpdate && hasObservedPostLaunchActivity {
-            breakPillController.update(evaluation: evaluation, config: breaksConfig)
+            if isBreakReminderSnoozed(now: now) {
+                breakPillController.suppressForSnooze()
+            } else {
+                breakPillController.update(evaluation: evaluation, config: breaksConfig)
+            }
         }
+    }
+
+    private func isBreakReminderSnoozed(now: Date) -> Bool {
+        activeBreakReminderSnoozedUntil(now: now) != nil
+    }
+
+    private func activeBreakReminderSnoozedUntil(now: Date = Date()) -> Date? {
+        guard let snoozedUntil = breakRemindersSnoozedUntil else { return nil }
+        guard now < snoozedUntil else {
+            breakRemindersSnoozedUntil = nil
+            AppPreferences.shared.breakRemindersSnoozedUntil = nil
+            return nil
+        }
+        return snoozedUntil
     }
 
     private func formattedClockTime(_ date: Date) -> String {

@@ -137,6 +137,21 @@ struct DashboardView: View {
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .lineLimit(2)
+
+            if let statusText = viewModel.breakReminderSnoozeStatusText {
+                Divider()
+                HStack(spacing: 8) {
+                    Text(statusText)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Resume now") {
+                        viewModel.cancelBreakReminderSnooze()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
         }
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor))

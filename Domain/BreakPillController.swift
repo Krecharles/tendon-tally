@@ -1,6 +1,35 @@
 import AppKit
 import Combine
 
+enum BreakReminderSnoozeOption: CaseIterable {
+    case fiveMinutes
+    case oneHour
+    case untilTomorrow
+
+    var title: String {
+        switch self {
+        case .fiveMinutes:
+            return "5 minutes"
+        case .oneHour:
+            return "1 hour"
+        case .untilTomorrow:
+            return "Until tomorrow"
+        }
+    }
+
+    func snoozedUntil(from now: Date = Date(), calendar: Calendar = .current) -> Date {
+        switch self {
+        case .fiveMinutes:
+            return now.addingTimeInterval(5 * 60)
+        case .oneHour:
+            return now.addingTimeInterval(60 * 60)
+        case .untilTomorrow:
+            let startOfToday = calendar.startOfDay(for: now)
+            return calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? now.addingTimeInterval(24 * 60 * 60)
+        }
+    }
+}
+
 /// Controls the floating break pill panel lifecycle and publishes state for the SwiftUI view.
 /// Always called from @MainActor MetricsViewModel, so all access is on the main thread.
 final class BreakPillController: ObservableObject {
@@ -9,6 +38,7 @@ final class BreakPillController: ObservableObject {
     @Published var progress: Double = 0.0
     @Published var showResetWarning: Bool = false
     @Published var showCelebration: Bool = false
+    var onSnoozeRequested: (@MainActor (BreakReminderSnoozeOption) -> Void)?
 
     private var panels: [BreakPillPanel] = []
     private var isVisible = false
@@ -85,6 +115,21 @@ final class BreakPillController: ObservableObject {
         for panel in panels {
             panel.hidePill()
         }
+    }
+
+    @MainActor
+    func requestSnooze(_ option: BreakReminderSnoozeOption) {
+        onSnoozeRequested?(option)
+        suppressForSnooze()
+    }
+
+    @MainActor
+    func suppressForSnooze() {
+        previousIdleSeconds = 0
+        resetWarningCountdown = 0
+        showResetWarning = false
+        showCelebration = false
+        hide()
     }
 
     @MainActor
