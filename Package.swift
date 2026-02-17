@@ -25,6 +25,9 @@ let package = Package(
                 "AGENTS.md",
                 "CLAUDE.md",
                 "assets",
+                "make-dmg.sh",
+                "release-input",
+                "release-output",
                 "run.sh",
                 "Tests"
             ],

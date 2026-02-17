@@ -6,13 +6,13 @@ Menu bar app tracking keyboard/mouse activity in 1-minute rolling windows. Swift
 
 ## Architecture
 
-- **App/** - Entry point (@main), NSStatusItem, AppState singleton
-- **Domain/** - EventTapManager (event tap), MetricsAggregator (1-min windows), PersistenceController (JSON storage), TimeSeriesCalculator
+- **App/** - Entry point (@main), NSStatusItem lifecycle, AppState singleton, beta-access cutoff gate (`March 1, 2026`)
+- **Domain/** - EventTapManager (event tap), MetricsAggregator (1-min windows), PersistenceController (JSON storage), TimeSeriesCalculator, break reminder evaluation/controllers, settings/state services
 - **Domain/Protocols/** - EventTapping, MetricsPersisting, MetricsAggregating (for testability/DI)
-- **Models/** - UsageSample, MetricTypes, RawActivitySnapshot
-- **UI/** - MetricsViewModel (MVVM), FullDashboardView (shell with sidebar), DashboardView (popover)
+- **Models/** - UsageSample, MetricTypes, RawActivitySnapshot, Breaks/KUI config models
+- **UI/** - MetricsViewModel (MVVM), FullDashboardView (shell with sidebar), DashboardView (popover), SettingsView
 - **UI/Components/** - Reusable views: MetricTile, PermissionBanner, SidebarButton, MetricPill, KUIWeightRow
-- **UI/Tabs/** - TodayTabView, HistoryTabView, KUITabView (split from FullDashboardView)
+- **UI/Tabs/** - TodayTabView, HistoryTabView, KUITabView, BreaksTabView, PermissionsTabView
 - **UI/Extensions/** - MetricType+Color
 
 ## Build & Run
@@ -49,7 +49,7 @@ swift test         # Run tests
 - Data flow: EventTapManager -> MetricsAggregator (callbacks) -> MetricsViewModel (@Published) -> Views
 - Protocols (EventTapping, MetricsPersisting, MetricsAggregating) enable dependency injection
 - MetricsAggregator accepts dependencies via init for testability
-- AppPreferences centralizes all UserDefaults access
+- AppPreferences centralizes dashboard/break state in UserDefaults; launch-at-login and dock visibility are applied through SettingsManager
 
 ## Note on Prompts
 
