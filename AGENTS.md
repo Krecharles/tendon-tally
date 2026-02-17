@@ -27,12 +27,15 @@ swift test         # Run tests
 ## Release Packaging
 
 - Drop exported app bundle at `release-input/TendonTally.app`
-- Build DMG with `./make-dmg.sh v1` (replace `v1` with release version label)
+- Build unsigned DMG with `./make-dmg.sh v1` (replace `v1` with release version label)
+- Build + sign + notarize + staple + validate in one run:
+  `SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE="TENDON_TALLY_NOTARY" ./make-dmg.sh v1 --all`
 - Output DMG is written to `release-output/TendonTally-v1.dmg`
 - Script applies drag-to-Applications DMG layout with no background by default
 - Script blesses the mounted volume so Finder opens the install window on mount
 - Optional custom background: `BACKGROUND_IMAGE=/path/to/background.png ./make-dmg.sh v1`
 - Optional icon layout tweak: `ICON_LEFT_X=220 ICON_RIGHT_X=580 ICON_Y=230 ./make-dmg.sh v1`
+- `NOTARY_PROFILE` must already exist in keychain (`xcrun notarytool store-credentials ...`)
 
 ## Build System
 

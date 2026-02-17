@@ -1,16 +1,119 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage:
+  ./make-dmg.sh [version] [--sign] [--notarize] [--staple] [--validate] [--all]
+
+Examples:
+  ./make-dmg.sh v1
+  SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./make-dmg.sh v1 --sign
+  SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE="TENDON_TALLY_NOTARY" ./make-dmg.sh v1 --all
+
+Flags:
+  --sign       Sign the generated DMG with codesign
+  --notarize   Submit DMG to Apple notarization (implies --sign --staple --validate)
+  --staple     Staple notarization ticket to DMG
+  --validate   Validate stapled notarization ticket
+  --all        Run sign + notarize + staple + validate
+  --help       Show this help
+
+Env vars:
+  SIGN_IDENTITY    Required for --sign/--notarize, e.g. "Developer ID Application: Name (TEAMID)"
+  NOTARY_PROFILE   Keychain profile for notarytool (default: TENDON_TALLY_NOTARY)
+  APP_NAME         App bundle name in release-input (default: TendonTally.app)
+  INPUT_DIR        Input folder for .app (default: ./release-input)
+  OUTPUT_DIR       Output folder for .dmg (default: ./release-output)
+  VOLUME_NAME      Mounted DMG volume name (default: TendonTally)
+  BACKGROUND_IMAGE Optional DMG background image path
+  ICON_LEFT_X      Finder icon X for app icon (default: 220)
+  ICON_RIGHT_X     Finder icon X for Applications link (default: 580)
+  ICON_Y           Finder icon Y for both icons (default: 230)
+EOF
+}
+
+require_command() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Missing required command: $cmd"
+    exit 1
+  fi
+}
+
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="${APP_NAME:-TendonTally.app}"
 INPUT_DIR="${INPUT_DIR:-$ROOT_DIR/release-input}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/release-output}"
-VERSION="${1:-v1}"
+VERSION="v1"
 VOLUME_NAME="${VOLUME_NAME:-TendonTally}"
 BACKGROUND_IMAGE="${BACKGROUND_IMAGE:-}"
 ICON_LEFT_X="${ICON_LEFT_X:-220}"
 ICON_RIGHT_X="${ICON_RIGHT_X:-580}"
 ICON_Y="${ICON_Y:-230}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-TENDON_TALLY_NOTARY}"
+SIGN_DMG=0
+NOTARIZE_DMG=0
+STAPLE_DMG=0
+VALIDATE_DMG=0
+POSITIONAL_SET=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --sign)
+      SIGN_DMG=1
+      ;;
+    --notarize)
+      NOTARIZE_DMG=1
+      ;;
+    --staple)
+      STAPLE_DMG=1
+      ;;
+    --validate)
+      VALIDATE_DMG=1
+      ;;
+    --all)
+      SIGN_DMG=1
+      NOTARIZE_DMG=1
+      STAPLE_DMG=1
+      VALIDATE_DMG=1
+      ;;
+    --*)
+      echo "Unknown option: $1"
+      usage
+      exit 1
+      ;;
+    *)
+      if [ "$POSITIONAL_SET" -eq 0 ]; then
+        VERSION="$1"
+        POSITIONAL_SET=1
+      else
+        echo "Unexpected extra positional argument: $1"
+        usage
+        exit 1
+      fi
+      ;;
+  esac
+  shift
+done
+
+if [ "$NOTARIZE_DMG" -eq 1 ]; then
+  SIGN_DMG=1
+  STAPLE_DMG=1
+  VALIDATE_DMG=1
+fi
+
+if [ "$SIGN_DMG" -eq 1 ] && [ -z "$SIGN_IDENTITY" ]; then
+  echo "SIGN_IDENTITY is required for --sign/--notarize."
+  echo "Example:"
+  echo '  SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./make-dmg.sh v1 --all'
+  exit 1
+fi
 
 APP_PATH="$INPUT_DIR/$APP_NAME"
 DMG_PATH="$OUTPUT_DIR/TendonTally-${VERSION}.dmg"
@@ -157,7 +260,30 @@ hdiutil convert "$RW_DMG_PATH" -format UDZO -imagekey zlib-level=9 -ov -o "$DMG_
 rm -f "$RW_DMG_PATH"
 rm -rf "$STAGING_DIR"
 
+if [ "$SIGN_DMG" -eq 1 ]; then
+  require_command codesign
+  echo "Signing DMG with identity: $SIGN_IDENTITY"
+  codesign --force --sign "$SIGN_IDENTITY" --timestamp "$DMG_PATH"
+  codesign --verify --verbose=2 "$DMG_PATH"
+fi
+
+if [ "$NOTARIZE_DMG" -eq 1 ]; then
+  require_command xcrun
+  echo "Submitting DMG for notarization with profile: $NOTARY_PROFILE"
+  xcrun notarytool submit "$DMG_PATH" --keychain-profile "$NOTARY_PROFILE" --wait
+fi
+
+if [ "$STAPLE_DMG" -eq 1 ]; then
+  require_command xcrun
+  echo "Stapling notarization ticket..."
+  xcrun stapler staple "$DMG_PATH"
+fi
+
+if [ "$VALIDATE_DMG" -eq 1 ]; then
+  require_command xcrun
+  echo "Validating notarization staple..."
+  xcrun stapler validate "$DMG_PATH"
+fi
+
 echo "Created DMG:"
 echo "  $DMG_PATH"
-echo
-echo "Next (optional but recommended): sign + notarize the DMG."
