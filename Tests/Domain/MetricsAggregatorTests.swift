@@ -90,6 +90,32 @@ final class MetricsAggregatorTests: XCTestCase {
         XCTAssertTrue(persistence.deletedCurrentSample)
     }
 
+    func testInitDiscardsFutureRestoredCurrentSample() {
+        let now = Date(timeIntervalSince1970: 1_705_000_000)
+        let future = sample(
+            start: now.addingTimeInterval(120),
+            end: now.addingTimeInterval(180),
+            keys: 42
+        )
+
+        let persistence = MockPersistence()
+        persistence.storedCurrentSample = future
+        let eventTap = MockEventTapManager()
+
+        let aggregator = MetricsAggregator(
+            eventTapManager: eventTap,
+            persistence: persistence,
+            now: now
+        )
+
+        XCTAssertEqual(aggregator.history.count, 0)
+        XCTAssertEqual(aggregator.currentSample.start, now)
+        XCTAssertEqual(aggregator.currentSample.keyPressCount, 0)
+        XCTAssertEqual(aggregator.currentSample.mouseClickCount, 0)
+        XCTAssertEqual(persistence.finalizedSyncSaves.count, 0)
+        XCTAssertTrue(persistence.deletedCurrentSample)
+    }
+
     func testPermissionCallbacksPropagateFromEventTap() {
         let persistence = MockPersistence()
         let eventTap = MockEventTapManager()
@@ -144,6 +170,32 @@ final class MetricsAggregatorTests: XCTestCase {
         }
         await fulfillment(of: [grantedExpectation], timeout: 1.0)
         XCTAssertNil(viewModel.permissionIssueMessage)
+    }
+
+    @MainActor
+    func testMetricsViewModelTodayTotalsIgnoreFutureSamples() {
+        let now = Date(timeIntervalSince1970: 1_705_000_000)
+        let futureHistorySample = sample(
+            start: now.addingTimeInterval(3_600),
+            end: now.addingTimeInterval(3_660),
+            keys: 120
+        )
+
+        let persistence = MockPersistence()
+        persistence.storedSamples = [futureHistorySample]
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(
+            eventTapManager: eventTap,
+            persistence: persistence,
+            now: now
+        )
+        let viewModel = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: BreakPillController()
+        )
+
+        XCTAssertEqual(viewModel.todayTotals.keyPressCount, 0)
+        XCTAssertEqual(viewModel.todayTotals.mouseClickCount, 0)
     }
 
     @MainActor

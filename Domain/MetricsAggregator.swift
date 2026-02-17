@@ -50,7 +50,26 @@ final class MetricsAggregator {
         logger.info("Initialized with \(self.history.count) historical samples")
 
         if let saved = savedCurrent {
-            if saved.end > now {
+            if saved.start > now {
+                // System time may have moved backwards since the sample was persisted.
+                // Discard future-dated current sample so live "today" metrics can recover.
+                persistence.deleteCurrentSample()
+                let formatter = ISO8601DateFormatter()
+                logger.warning("Discarded future-dated restored sample from \(formatter.string(from: saved.start)); starting new window")
+
+                let end = now.addingTimeInterval(windowLength)
+                self.currentSample = UsageSample(
+                    id: UUID(),
+                    start: now,
+                    end: end,
+                    keyPressCount: 0,
+                    mouseClickCount: 0,
+                    scrollTicks: 0,
+                    scrollDistance: 0,
+                    mouseDistance: 0
+                )
+                self.windowStart = now
+            } else if saved.end > now {
                 // Window is still active — resume it.
                 self.currentSample = saved
                 self.windowStart = saved.start

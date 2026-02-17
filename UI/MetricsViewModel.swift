@@ -112,14 +112,14 @@ final class MetricsViewModel: ObservableObject {
         var totalScrollTicks = 0
         var totalMouseDistance = 0.0
 
-        for sample in history where sample.start >= startOfDay {
+        for sample in history where sample.end >= startOfDay && sample.start <= now {
             totalKeys += sample.keyPressCount
             totalClicks += sample.mouseClickCount
             totalScrollTicks += sample.scrollTicks
             totalMouseDistance += sample.mouseDistance
         }
 
-        if current.start >= startOfDay {
+        if current.end >= startOfDay && current.start <= now {
             totalKeys += current.keyPressCount
             totalClicks += current.mouseClickCount
             totalScrollTicks += current.scrollTicks

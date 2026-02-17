@@ -1,5 +1,6 @@
 import Foundation
 import Cocoa
+import ApplicationServices
 import os.log
 
 /// Monitors keyboard and mouse events system-wide using NSEvent monitors.
@@ -66,14 +67,13 @@ final class EventTapManager {
         logger.info("Permission probe - Accessibility: \(status.accessibilityGranted), Input Monitoring: \(status.inputMonitoringGranted)")
 
         if !status.allRequiredGranted {
-            onPermissionOrTapFailure?(status.guidanceMessage)
-            startRetryTimer()
+            handleRegistrationFailure(message: status.guidanceMessage)
             return
         }
 
         stopRetryTimer()
-        hasRegisteredMonitors = true
         logger.info("Registering NSEvent monitors...")
+        var failedGlobalMasks: [UInt64] = []
 
         // Key down — filter out auto-repeat so holding a key counts as one stroke
         let keyHandler: (NSEvent) -> NSEvent? = { [weak self] event in
@@ -85,7 +85,9 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .keyDown, handler: keyHandler)
+        if !addMonitors(matching: .keyDown, handler: keyHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.keyDown.rawValue)
+        }
 
         // Mouse clicks
         let leftClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
@@ -95,7 +97,9 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .leftMouseDown, handler: leftClickHandler)
+        if !addMonitors(matching: .leftMouseDown, handler: leftClickHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.leftMouseDown.rawValue)
+        }
 
         let rightClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
             self?.queue.async {
@@ -104,7 +108,9 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .rightMouseDown, handler: rightClickHandler)
+        if !addMonitors(matching: .rightMouseDown, handler: rightClickHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.rightMouseDown.rawValue)
+        }
 
         let otherClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
             self?.queue.async {
@@ -113,7 +119,9 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .otherMouseDown, handler: otherClickHandler)
+        if !addMonitors(matching: .otherMouseDown, handler: otherClickHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.otherMouseDown.rawValue)
+        }
 
         // Scroll wheel
         let scrollHandler: (NSEvent) -> NSEvent? = { [weak self] event in
@@ -133,7 +141,9 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .scrollWheel, handler: scrollHandler)
+        if !addMonitors(matching: .scrollWheel, handler: scrollHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.scrollWheel.rawValue)
+        }
 
         // Mouse movement
         let moveHandler: (NSEvent) -> NSEvent? = { [weak self] event in
@@ -151,7 +161,9 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .mouseMoved, handler: moveHandler)
+        if !addMonitors(matching: .mouseMoved, handler: moveHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.mouseMoved.rawValue)
+        }
 
         // Mouse dragging (also counts as movement)
         let dragHandler: (NSEvent) -> NSEvent? = { [weak self] event in
@@ -169,18 +181,37 @@ final class EventTapManager {
             }
             return event
         }
-        addMonitors(matching: .leftMouseDragged, handler: dragHandler)
-        addMonitors(matching: .rightMouseDragged, handler: dragHandler)
+        if !addMonitors(matching: .leftMouseDragged, handler: dragHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.leftMouseDragged.rawValue)
+        }
+        if !addMonitors(matching: .rightMouseDragged, handler: dragHandler).global {
+            failedGlobalMasks.append(NSEvent.EventTypeMask.rightMouseDragged.rawValue)
+        }
 
+        if !failedGlobalMasks.isEmpty {
+            let failedMasksDescription = failedGlobalMasks.map(String.init).joined(separator: ", ")
+            logger.error("Required global monitors failed to register for masks: \(failedMasksDescription)")
+            handleRegistrationFailure(
+                message: "TendonTally could not start global input monitoring. Re-enable Accessibility and Input Monitoring permissions, then relaunch TendonTally."
+            )
+            return
+        }
+
+        hasRegisteredMonitors = true
         onPermissionGranted?()
     }
 
-    private func addMonitors(matching mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> NSEvent?) {
+    @discardableResult
+    private func addMonitors(matching mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> NSEvent?) -> (global: Bool, local: Bool) {
+        var globalAdded = false
+        var localAdded = false
+
         // Global monitor: events in other apps. Handler returns Void (can't modify events).
         if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { event in
             _ = handler(event)
         }) {
             globalMonitors.append(global)
+            globalAdded = true
             logger.info("Global monitor registered for mask: \(mask.rawValue)")
         } else {
             logger.error("Failed to register global monitor for mask: \(mask.rawValue)")
@@ -189,10 +220,32 @@ final class EventTapManager {
         // Local monitor: events in this app. Handler can return modified event.
         if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: handler) {
             localMonitors.append(local)
+            localAdded = true
             logger.info("Local monitor registered for mask: \(mask.rawValue)")
         } else {
             logger.error("Failed to register local monitor for mask: \(mask.rawValue)")
         }
+
+        return (global: globalAdded, local: localAdded)
+    }
+
+    private func handleRegistrationFailure(message: String) {
+        removeAllMonitors()
+        hasRegisteredMonitors = false
+        onPermissionOrTapFailure?(message)
+        startRetryTimer()
+    }
+
+    private func removeAllMonitors() {
+        for monitor in globalMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        globalMonitors.removeAll()
+
+        for monitor in localMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        localMonitors.removeAll()
     }
 
     static func probePermissionStatus() -> PermissionStatus {
@@ -207,6 +260,10 @@ final class EventTapManager {
     }
 
     static func isInputMonitoringGranted() -> Bool {
+        if #available(macOS 10.15, *) {
+            return CGPreflightListenEventAccess()
+        }
+
         let probeMask: CGEventMask = 1 << CGEventMask(CGEventType.keyDown.rawValue)
         guard let probe = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -230,6 +287,7 @@ final class EventTapManager {
         retryTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             self?.registerMonitors()
         }
+        RunLoop.main.add(retryTimer!, forMode: .common)
     }
 
     private func stopRetryTimer() {
@@ -242,14 +300,7 @@ final class EventTapManager {
         DispatchQueue.main.async { [weak self] in
             self?.stopRetryTimer()
         }
-        for monitor in globalMonitors {
-            NSEvent.removeMonitor(monitor)
-        }
-        globalMonitors.removeAll()
-        for monitor in localMonitors {
-            NSEvent.removeMonitor(monitor)
-        }
-        localMonitors.removeAll()
+        removeAllMonitors()
         hasRegisteredMonitors = false
         queue.async { [weak self] in
             self?.lastMouseLocation = nil
