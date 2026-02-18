@@ -15,7 +15,7 @@ struct FullDashboardView: View {
         case history
         case breaks
         case settings
-        case kui
+        case totalCalculation
         case permissions
     }
 
@@ -36,8 +36,8 @@ struct FullDashboardView: View {
                     BreaksTabView(viewModel: viewModel)
                 case .settings:
                     SettingsView(viewModel: viewModel)
-                case .kui:
-                    KUITabView(viewModel: viewModel)
+                case .totalCalculation:
+                    TotalCalculationTabView(viewModel: viewModel)
                 case .permissions:
                     PermissionsTabView(message: viewModel.permissionIssueMessage ?? "")
                 }
@@ -85,12 +85,12 @@ struct FullDashboardView: View {
                 }
 
                 SidebarButton(
-                    title: "KUI",
+                    title: "Total",
                     icon: "function",
-                    isSelected: selectedTab == .kui
+                    isSelected: selectedTab == .totalCalculation
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTabRawValue = Tab.kui.rawValue
+                        selectedTabRawValue = Tab.totalCalculation.rawValue
                     }
                 }
 

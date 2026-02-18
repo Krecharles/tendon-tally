@@ -31,10 +31,10 @@
 		AA000001AAAA000000000006 /* PermissionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000015 /* PermissionBanner.swift */; };
 		AA000001AAAA000000000007 /* SidebarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000016 /* SidebarButton.swift */; };
 		AA000001AAAA000000000008 /* MetricPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000017 /* MetricPill.swift */; };
-		AA000001AAAA000000000009 /* KUIWeightRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000018 /* KUIWeightRow.swift */; };
+		AA000001AAAA000000000009 /* TotalWeightRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000018 /* TotalWeightRow.swift */; };
 		AA000001AAAA00000000000A /* TodayTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000000000019 /* TodayTabView.swift */; };
 		AA000001AAAA00000000000B /* HistoryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001A /* HistoryTabView.swift */; };
-		AA000001AAAA00000000000C /* KUITabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001B /* KUITabView.swift */; };
+		AA000001AAAA00000000000C /* TotalCalculationTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001B /* TotalCalculationTabView.swift */; };
 		AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001C /* MetricType+Color.swift */; };
 		AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA00000000001D /* PermissionsTabView.swift */; };
 		AB000001BBBB000000000001 /* Breaks.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001BBBB000000000011 /* Breaks.swift */; };
@@ -70,10 +70,10 @@
 		AA000001AAAA000000000015 /* PermissionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PermissionBanner.swift; path = ../UI/Components/PermissionBanner.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA000000000016 /* SidebarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SidebarButton.swift; path = ../UI/Components/SidebarButton.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA000000000017 /* MetricPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MetricPill.swift; path = ../UI/Components/MetricPill.swift; sourceTree = SOURCE_ROOT; };
-		AA000001AAAA000000000018 /* KUIWeightRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KUIWeightRow.swift; path = ../UI/Components/KUIWeightRow.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000000000018 /* TotalWeightRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TotalWeightRow.swift; path = ../UI/Components/TotalWeightRow.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA000000000019 /* TodayTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TodayTabView.swift; path = ../UI/Tabs/TodayTabView.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001A /* HistoryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryTabView.swift; path = ../UI/Tabs/HistoryTabView.swift; sourceTree = SOURCE_ROOT; };
-		AA000001AAAA00000000001B /* KUITabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KUITabView.swift; path = ../UI/Tabs/KUITabView.swift; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA00000000001B /* TotalCalculationTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TotalCalculationTabView.swift; path = ../UI/Tabs/TotalCalculationTabView.swift; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001C /* MetricType+Color.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MetricType+Color.swift"; path = "../UI/Extensions/MetricType+Color.swift"; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA00000000001D /* PermissionsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PermissionsTabView.swift; path = ../UI/Tabs/PermissionsTabView.swift; sourceTree = SOURCE_ROOT; };
 		AB000001BBBB000000000011 /* Breaks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Breaks.swift; path = ../Models/Breaks.swift; sourceTree = SOURCE_ROOT; };
@@ -150,10 +150,10 @@
 				AA000001AAAA000000000015 /* PermissionBanner.swift */,
 				AA000001AAAA000000000016 /* SidebarButton.swift */,
 				AA000001AAAA000000000017 /* MetricPill.swift */,
-				AA000001AAAA000000000018 /* KUIWeightRow.swift */,
+				AA000001AAAA000000000018 /* TotalWeightRow.swift */,
 				AA000001AAAA000000000019 /* TodayTabView.swift */,
 				AA000001AAAA00000000001A /* HistoryTabView.swift */,
-				AA000001AAAA00000000001B /* KUITabView.swift */,
+				AA000001AAAA00000000001B /* TotalCalculationTabView.swift */,
 				AB000001BBBB000000000014 /* BreaksTabView.swift */,
 				AA000001AAAA00000000001C /* MetricType+Color.swift */,
 				AA000001AAAA00000000001D /* PermissionsTabView.swift */,
@@ -262,10 +262,10 @@
 				AA000001AAAA000000000006 /* PermissionBanner.swift in Sources */,
 				AA000001AAAA000000000007 /* SidebarButton.swift in Sources */,
 				AA000001AAAA000000000008 /* MetricPill.swift in Sources */,
-				AA000001AAAA000000000009 /* KUIWeightRow.swift in Sources */,
+				AA000001AAAA000000000009 /* TotalWeightRow.swift in Sources */,
 				AA000001AAAA00000000000A /* TodayTabView.swift in Sources */,
 				AA000001AAAA00000000000B /* HistoryTabView.swift in Sources */,
-				AA000001AAAA00000000000C /* KUITabView.swift in Sources */,
+				AA000001AAAA00000000000C /* TotalCalculationTabView.swift in Sources */,
 				AA000001AAAA00000000000D /* MetricType+Color.swift in Sources */,
 				AA000001AAAA00000000000E /* PermissionsTabView.swift in Sources */,
 				AC000001CCCC000000000001 /* BreakPillController.swift in Sources */,

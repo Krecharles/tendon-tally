@@ -14,7 +14,8 @@ final class AppPreferences {
         static let selectedTab = "selectedTab"
         static let selectedTimeFrame = "selectedTimeFrame"
         static let selectedMetric = "selectedMetric"
-        static let kuiConfig = "kuiConfig"
+        static let totalConfig = "totalConfig"
+        static let advancedTotalCalculationEnabled = "advancedTotalCalculationEnabled"
         static let launchAtLogin = "launchAtLogin"
         static let showInDock = "showInDock"
         static let breaksConfig = "breaksConfig"
@@ -42,9 +43,12 @@ final class AppPreferences {
 
     var selectedMetric: MetricType {
         get {
-            if let raw = defaults.string(forKey: Keys.selectedMetric),
-               let metric = MetricType(rawValue: raw) {
-                return metric
+            if let raw = defaults.string(forKey: Keys.selectedMetric) {
+                if let metric = MetricType(rawValue: raw) {
+                    return metric
+                }
+                // Preserve prior aggregate selections from older labels.
+                return .aggregate
             }
             return .keys
         }
@@ -53,21 +57,28 @@ final class AppPreferences {
         }
     }
 
-    // MARK: - KUI Config
+    // MARK: - Total Config
 
-    var kuiConfig: KUIConfig {
+    var totalConfig: TotalConfig {
         get {
-            if let data = defaults.data(forKey: Keys.kuiConfig),
-               let config = try? JSONDecoder().decode(KUIConfig.self, from: data) {
+            if let data = defaults.data(forKey: Keys.totalConfig),
+               let config = try? JSONDecoder().decode(TotalConfig.self, from: data) {
                 return config
             }
             return .default
         }
         set {
             if let data = try? JSONEncoder().encode(newValue) {
-                defaults.set(data, forKey: Keys.kuiConfig)
+                defaults.set(data, forKey: Keys.totalConfig)
             }
         }
+    }
+
+    // MARK: - Advanced Total Calculation
+
+    var advancedTotalCalculationEnabled: Bool {
+        get { defaults.bool(forKey: Keys.advancedTotalCalculationEnabled) }
+        set { defaults.set(newValue, forKey: Keys.advancedTotalCalculationEnabled) }
     }
 
     // MARK: - Launch at Login

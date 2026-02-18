@@ -188,7 +188,7 @@ struct HistoryTabView: View {
             dataPoints: dataPoints,
             selectedMetric: viewModel.selectedMetric,
             timeFrame: viewModel.selectedTimeFrame,
-            kuiConfig: viewModel.kuiConfig,
+            totalConfig: viewModel.effectiveTotalConfig,
             hasAnyData: hasAnyData
         )
         .frame(height: 340)

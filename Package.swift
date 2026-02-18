@@ -67,11 +67,11 @@ let package = Package(
                 "UI/Components/PermissionBanner.swift",
                 "UI/Components/SidebarButton.swift",
                 "UI/Components/MetricPill.swift",
-                "UI/Components/KUIWeightRow.swift",
+                "UI/Components/TotalWeightRow.swift",
                 // UI - Tab views
                 "UI/Tabs/TodayTabView.swift",
                 "UI/Tabs/HistoryTabView.swift",
-                "UI/Tabs/KUITabView.swift",
+                "UI/Tabs/TotalCalculationTabView.swift",
                 "UI/Tabs/BreaksTabView.swift",
                 "UI/Tabs/PermissionsTabView.swift",
                 // UI - Extensions

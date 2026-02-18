@@ -58,7 +58,7 @@ enum MetricType: String, CaseIterable, Hashable {
     case clicks = "Mouse Clicks"
     case scroll = "Scroll Distance"
     case mouseDistance = "Mouse Distance"
-    case aggregate = "KUI"
+    case aggregate = "Total"
     
     static var individualMetrics: [MetricType] {
         [.keys, .clicks, .scroll, .mouseDistance]
@@ -70,7 +70,7 @@ enum MetricType: String, CaseIterable, Hashable {
         case .clicks: return "clicks"
         case .scroll: return "scroll (100s)"
         case .mouseDistance: return "distance (1000s px)"
-        case .aggregate: return "KUI"
+        case .aggregate: return "total score"
         }
     }
 }
@@ -83,30 +83,30 @@ struct AggregatedMetrics {
     let mouseDistance: Double
 }
 
-/// Configuration for the Key Usage Indicator (KUI).
+/// Configuration for the Total metric.
 ///
-/// The KUI is a single metric built as a linear combination of the existing factors:
+/// By default, Total is the simple sum of the existing factors:
 /// - Keys pressed
 /// - Mouse clicks
 /// - Scroll ticks (scaled to 100s)
 /// - Mouse distance (scaled to 1000s of pixels)
 ///
-/// All weights are user-configurable and can be positive, zero, or negative.
-struct KUIConfig: Codable, Equatable {
+/// In advanced mode, users can apply custom weights to emphasize specific factors.
+struct TotalConfig: Codable, Equatable {
     var keysWeight: Double
     var clicksWeight: Double
     var scrollTicksWeight: Double
     var mouseDistanceWeight: Double
     
     /// Recommended default configuration: treat all inputs as equally important.
-    static let `default` = KUIConfig(
+    static let `default` = TotalConfig(
         keysWeight: 1.0,
         clicksWeight: 1.0,
         scrollTicksWeight: 1.0,
         mouseDistanceWeight: 1.0
     )
     
-    /// Apply this configuration to aggregated metrics to compute a KUI value.
+    /// Apply this configuration to aggregated metrics to compute the Total value.
     ///
     /// Scaling matches the units shown in the dashboard tiles:
     /// - Scroll ticks are counted in 100s

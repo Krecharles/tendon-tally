@@ -141,11 +141,24 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func toggleRow(label: String, isOn: Binding<Bool>, onChange: @escaping (Bool) -> Void) -> some View {
+    private func toggleRow(
+        label: String,
+        description: String? = nil,
+        isOn: Binding<Bool>,
+        onChange: @escaping (Bool) -> Void
+    ) -> some View {
         HStack {
-            Text(label)
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 13))
+                    .foregroundColor(.primary)
+                if let description {
+                    Text(description)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
             Spacer()
 

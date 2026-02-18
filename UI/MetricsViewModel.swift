@@ -19,9 +19,14 @@ final class MetricsViewModel: ObservableObject {
             AppPreferences.shared.selectedMetric = selectedMetric
         }
     }
-    @Published var kuiConfig: KUIConfig {
+    @Published var totalConfig: TotalConfig {
         didSet {
-            AppPreferences.shared.kuiConfig = kuiConfig
+            AppPreferences.shared.totalConfig = totalConfig
+        }
+    }
+    @Published var advancedTotalCalculationEnabled: Bool {
+        didSet {
+            AppPreferences.shared.advancedTotalCalculationEnabled = advancedTotalCalculationEnabled
         }
     }
     @Published private(set) var breaksConfig: BreaksConfig
@@ -39,10 +44,10 @@ final class MetricsViewModel: ObservableObject {
 
     init(
         aggregator: MetricsAggregator,
-        breakPillController: BreakPillController = BreakPillController()
+        breakPillController: BreakPillController? = nil
     ) {
         self.aggregator = aggregator
-        self.breakPillController = breakPillController
+        self.breakPillController = breakPillController ?? BreakPillController()
         self.currentSample = aggregator.currentSample
         self.todayTotals = MetricsViewModel.computeTodayTotals(
             current: aggregator.currentSample,
@@ -52,7 +57,8 @@ final class MetricsViewModel: ObservableObject {
         let prefs = AppPreferences.shared
         self.selectedTimeFrame = prefs.selectedTimeFrame
         self.selectedMetric = prefs.selectedMetric
-        self.kuiConfig = prefs.kuiConfig
+        self.totalConfig = prefs.totalConfig
+        self.advancedTotalCalculationEnabled = prefs.advancedTotalCalculationEnabled
         self.breaksConfig = prefs.breaksConfig.normalized()
         self.breakRemindersSnoozedUntil = prefs.breakRemindersSnoozedUntil
         self.launchDate = Date()
@@ -262,8 +268,16 @@ final class MetricsViewModel: ObservableObject {
         case .mouseDistance:
             return metrics.mouseDistance / 1000.0
         case .aggregate:
-            return kuiConfig.apply(to: metrics)
+            return effectiveTotalConfig.apply(to: metrics)
         }
+    }
+
+    var effectiveTotalConfig: TotalConfig {
+        advancedTotalCalculationEnabled ? totalConfig : .default
+    }
+
+    func totalValue(for metrics: AggregatedMetrics) -> Double {
+        effectiveTotalConfig.apply(to: metrics)
     }
 
     func timeSeriesData(for timeFrame: TimeFrame, offset: Int) -> [TimeSeriesDataPoint] {

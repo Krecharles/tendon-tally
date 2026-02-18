@@ -5,7 +5,7 @@ struct BarChartView: View {
     let dataPoints: [TimeSeriesDataPoint]
     let selectedMetric: MetricType
     let timeFrame: TimeFrame
-    let kuiConfig: KUIConfig
+    let totalConfig: TotalConfig
     let hasAnyData: Bool
 
     @State private var hoveredBarTime: Date?
@@ -27,7 +27,7 @@ struct BarChartView: View {
                 scrollTicks: point.scrollTicks,
                 mouseDistance: point.mouseDistance
             )
-            return kuiConfig.apply(to: metrics)
+            return totalConfig.apply(to: metrics)
         }
     }
 

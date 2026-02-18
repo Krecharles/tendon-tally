@@ -58,18 +58,18 @@ final class MetricTypesTests: XCTestCase {
         )
     }
 
-    // MARK: - KUIConfig
+    // MARK: - TotalConfig
 
-    func testKUIConfigDefaultWeights() {
-        let config = KUIConfig.default
+    func testTotalConfigDefaultWeights() {
+        let config = TotalConfig.default
         XCTAssertEqual(config.keysWeight, 1.0)
         XCTAssertEqual(config.clicksWeight, 1.0)
         XCTAssertEqual(config.scrollTicksWeight, 1.0)
         XCTAssertEqual(config.mouseDistanceWeight, 1.0)
     }
 
-    func testKUIConfigApplyDefaultWeights() {
-        let config = KUIConfig.default
+    func testTotalConfigApplyDefaultWeights() {
+        let config = TotalConfig.default
         let metrics = AggregatedMetrics(
             keyPressCount: 100,
             mouseClickCount: 50,
@@ -82,8 +82,8 @@ final class MetricTypesTests: XCTestCase {
         XCTAssertEqual(result, 155.0, accuracy: 0.001)
     }
 
-    func testKUIConfigApplyCustomWeights() {
-        let config = KUIConfig(
+    func testTotalConfigApplyCustomWeights() {
+        let config = TotalConfig(
             keysWeight: 2.0,
             clicksWeight: 0.5,
             scrollTicksWeight: 0.0,
@@ -101,8 +101,8 @@ final class MetricTypesTests: XCTestCase {
         XCTAssertEqual(result, 222.0, accuracy: 0.001)
     }
 
-    func testKUIConfigApplyZeroMetrics() {
-        let config = KUIConfig.default
+    func testTotalConfigApplyZeroMetrics() {
+        let config = TotalConfig.default
         let metrics = AggregatedMetrics(
             keyPressCount: 0,
             mouseClickCount: 0,
@@ -130,12 +130,12 @@ final class MetricTypesTests: XCTestCase {
         XCTAssertEqual(MetricType.allCases.count, 5)
     }
 
-    // MARK: - KUIConfig Codable
+    // MARK: - TotalConfig Codable
 
-    func testKUIConfigCodableRoundTrip() throws {
-        let config = KUIConfig(keysWeight: 1.5, clicksWeight: 2.0, scrollTicksWeight: 0.5, mouseDistanceWeight: 3.0)
+    func testTotalConfigCodableRoundTrip() throws {
+        let config = TotalConfig(keysWeight: 1.5, clicksWeight: 2.0, scrollTicksWeight: 0.5, mouseDistanceWeight: 3.0)
         let data = try JSONEncoder().encode(config)
-        let decoded = try JSONDecoder().decode(KUIConfig.self, from: data)
+        let decoded = try JSONDecoder().decode(TotalConfig.self, from: data)
         XCTAssertEqual(config, decoded)
     }
 

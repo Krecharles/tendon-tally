@@ -53,7 +53,7 @@ struct DashboardView: View {
     }
 
     private var metricsGrid: some View {
-        let kui = viewModel.kuiConfig.apply(to: AggregatedMetrics(
+        let total = viewModel.totalValue(for: AggregatedMetrics(
             keyPressCount: viewModel.todayTotals.keyPressCount,
             mouseClickCount: viewModel.todayTotals.mouseClickCount,
             scrollTicks: viewModel.todayTotals.scrollTicks,
@@ -70,7 +70,7 @@ struct DashboardView: View {
                 popoverTile(title: "Mouse", value: Int(viewModel.todayTotals.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
             }
             HStack(spacing: 8) {
-                popoverTile(title: "KUI", value: Int(kui), icon: "chart.bar.fill", color: .purple)
+                popoverTile(title: "Total", value: Int(total), icon: "chart.bar.fill", color: .purple)
             }
         }
     }

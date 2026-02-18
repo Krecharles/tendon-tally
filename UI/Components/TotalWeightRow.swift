@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct KUIWeightRow: View {
+struct TotalWeightRow: View {
     let title: String
     let icon: String
     let color: Color
