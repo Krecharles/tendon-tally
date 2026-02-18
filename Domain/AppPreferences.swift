@@ -91,7 +91,12 @@ final class AppPreferences {
     // MARK: - Show in Dock
 
     var showInDock: Bool {
-        get { defaults.bool(forKey: Keys.showInDock) }
+        get {
+            if defaults.object(forKey: Keys.showInDock) == nil {
+                return true
+            }
+            return defaults.bool(forKey: Keys.showInDock)
+        }
         set { defaults.set(newValue, forKey: Keys.showInDock) }
     }
 

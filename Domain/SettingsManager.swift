@@ -36,6 +36,10 @@ final class SettingsManager {
     // MARK: - Show in Dock
     
     func getShowInDock() -> Bool {
+        // Default to enabled for first-time users when no preference has been saved yet.
+        if userDefaults.object(forKey: showInDockKey) == nil {
+            return true
+        }
         return userDefaults.bool(forKey: showInDockKey)
     }
     

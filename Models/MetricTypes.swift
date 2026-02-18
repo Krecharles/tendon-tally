@@ -68,9 +68,9 @@ enum MetricType: String, CaseIterable, Hashable {
         switch self {
         case .keys: return "keys"
         case .clicks: return "clicks"
-        case .scroll: return "scroll (100s)"
-        case .mouseDistance: return "distance (1000s px)"
-        case .aggregate: return "total score"
+        case .scroll: return "scroll movement"
+        case .mouseDistance: return "mouse movement"
+        case .aggregate: return "total"
         }
     }
 }

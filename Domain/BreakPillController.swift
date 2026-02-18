@@ -40,11 +40,16 @@ final class BreakPillController: ObservableObject {
     @Published var showCelebration: Bool = false
     var onSnoozeRequested: (@MainActor (BreakReminderSnoozeOption) -> Void)?
 
+    private let presentPanels: Bool
     private var panels: [BreakPillPanel] = []
-    private var isVisible = false
+    private(set) var isVisible = false
     private var previousPhase: BreakPhase?
     private var previousIdleSeconds: TimeInterval = 0
     private var resetWarningCountdown: Int = 0
+
+    init(presentPanels: Bool = true) {
+        self.presentPanels = presentPanels
+    }
 
     @MainActor
     func update(evaluation: BreaksEvaluation, config: BreaksConfig) {
@@ -85,14 +90,23 @@ final class BreakPillController: ObservableObject {
             }
 
         case .onBreak:
-            // Completing a break via inactivity should be silent:
-            // no celebration state, no completion sound, no visible pill.
+            // Only surface completion when a break was actually due.
+            // Early breaks taken during work should remain silent.
+            let shouldShowCompletedPill = oldPhase == .due || (oldPhase == .onBreak && isVisible)
+            guard shouldShowCompletedPill else {
+                showCelebration = false
+                hide()
+                return
+            }
+
+            // Keep the completed-due state visible until input resumes work.
+            // This state is intentionally silent.
             previousIdleSeconds = 0
             resetWarningCountdown = 0
             showResetWarning = false
-            showCelebration = false
-            hide()
-            return
+            showCelebration = true
+            primaryText = formattedDuration(evaluation.requiredBreakSeconds)
+            progress = 1.0
         }
 
         show()
@@ -100,6 +114,10 @@ final class BreakPillController: ObservableObject {
 
     @MainActor
     private func show() {
+        if !presentPanels {
+            isVisible = true
+            return
+        }
         syncPanelsToScreens()
         guard !isVisible else { return }
         isVisible = true
@@ -111,6 +129,10 @@ final class BreakPillController: ObservableObject {
     @MainActor
     private func hide() {
         guard isVisible else { return }
+        if !presentPanels {
+            isVisible = false
+            return
+        }
         isVisible = false
         for panel in panels {
             panel.hidePill()

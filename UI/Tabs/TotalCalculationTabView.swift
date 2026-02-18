@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 struct TotalCalculationTabView: View {
+    private let contributionColumnWidth: CGFloat = 92
     @ObservedObject var viewModel: MetricsViewModel
 
     private var todayMetrics: AggregatedMetrics {
@@ -16,6 +17,7 @@ struct TotalCalculationTabView: View {
                     .foregroundColor(.primary)
 
                 explanationCard
+                normalizationDetailsCard
 
                 advancedToggleCard
 
@@ -100,7 +102,9 @@ struct TotalCalculationTabView: View {
                 Text("Weight")
                     .frame(width: 110, alignment: .center)
                 Text("Contribution")
-                    .frame(width: 70, alignment: .trailing)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
+                    .frame(width: contributionColumnWidth, alignment: .trailing)
             }
             .font(.system(size: 10, weight: .semibold))
             .foregroundColor(.secondary)
@@ -115,6 +119,7 @@ struct TotalCalculationTabView: View {
                     color: .blue,
                     currentValue: keysValue,
                     contribution: Double(keysValue) * viewModel.totalConfig.keysWeight,
+                    contributionWidth: contributionColumnWidth,
                     weight: $viewModel.totalConfig.keysWeight
                 )
                 TotalWeightRow(
@@ -123,27 +128,51 @@ struct TotalCalculationTabView: View {
                     color: .red,
                     currentValue: clicksValue,
                     contribution: Double(clicksValue) * viewModel.totalConfig.clicksWeight,
+                    contributionWidth: contributionColumnWidth,
                     weight: $viewModel.totalConfig.clicksWeight
                 )
                 TotalWeightRow(
-                    title: "Scroll (per 100)",
+                    title: "Scroll",
                     icon: "arrow.up.arrow.down",
                     color: .green,
                     currentValue: scrollValue,
                     contribution: Double(scrollValue) * viewModel.totalConfig.scrollTicksWeight,
+                    contributionWidth: contributionColumnWidth,
                     weight: $viewModel.totalConfig.scrollTicksWeight
                 )
                 TotalWeightRow(
-                    title: "Mouse (per 1000px)",
+                    title: "Mouse",
                     icon: "arrow.up.left.and.arrow.down.right",
                     color: .orange,
                     currentValue: mouseValue,
                     contribution: Double(mouseValue) * viewModel.totalConfig.mouseDistanceWeight,
+                    contributionWidth: contributionColumnWidth,
                     weight: $viewModel.totalConfig.mouseDistanceWeight
                 )
             }
         }
         .frame(maxWidth: 560)
+    }
+
+    private var normalizationDetailsCard: some View {
+        DisclosureGroup("Measurement Details") {
+            Text("Scroll is normalized in steps of 100 ticks, and mouse movement is normalized in steps of 1,000 pixels. This keeps Total scoring balanced across metrics.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+        }
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(.primary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: 560, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+        )
     }
 
     private var totalSection: some View {

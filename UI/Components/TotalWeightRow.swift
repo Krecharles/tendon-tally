@@ -6,6 +6,7 @@ struct TotalWeightRow: View {
     let color: Color
     let currentValue: Int
     let contribution: Double
+    let contributionWidth: CGFloat
     @Binding var weight: Double
 
     @State private var textValue: String = ""
@@ -67,7 +68,7 @@ struct TotalWeightRow: View {
             Text(String(format: "%.1f", contribution))
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .foregroundColor(.primary)
-                .frame(width: 70, alignment: .trailing)
+                .frame(width: contributionWidth, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)

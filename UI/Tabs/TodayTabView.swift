@@ -28,14 +28,10 @@ struct TodayTabView: View {
                 ], spacing: 10) {
                     MetricTile(title: "Keys", value: todayMetrics.keyPressCount, icon: "keyboard.fill", color: .blue)
                     MetricTile(title: "Clicks", value: todayMetrics.mouseClickCount, icon: "cursorarrow.click", color: .red)
-                    MetricTile(title: "Scroll (100s)", value: todayMetrics.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
-                    MetricTile(title: "Mouse (1000px)", value: Int(todayMetrics.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
+                    MetricTile(title: "Scroll", value: todayMetrics.scrollTicks / 100, icon: "arrow.up.arrow.down", color: .green)
+                    MetricTile(title: "Mouse", value: Int(todayMetrics.mouseDistance / 1_000), icon: "arrow.up.left.and.arrow.down.right", color: .orange)
                     MetricTile(title: "Total", value: Int(totalValue.rounded()), icon: "chart.bar.fill", color: .purple)
                 }
-
-                Text("Scroll ticks in 100s, mouse distance in 1000s of pixels.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
