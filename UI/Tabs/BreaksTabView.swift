@@ -12,13 +12,13 @@ struct BreaksTabView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.primary)
 
+                explanationCard
                 remindersToggleRow
                 if viewModel.breaksConfig.remindersEnabled {
                     topStatusCard
                     snoozeControlsCard
                     breakRulesSection
                 }
-                explanationCard
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -88,7 +88,7 @@ struct BreaksTabView: View {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 12))
                     .foregroundColor(.blue)
-                Text("How Break Tracking Works")
+                Text("How Breaks Work")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.primary)
             }
@@ -248,7 +248,7 @@ struct BreaksTabView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Enable Break Tracking")
+                    Text("Enable Breaks")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.primary)
                     Text("Show a floating pill when a break is due or in progress.")

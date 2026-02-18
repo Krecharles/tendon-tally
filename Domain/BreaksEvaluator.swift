@@ -52,6 +52,13 @@ struct BreakTransitionTracker {
         self.lastBreakEndedAt = lastBreakEndedAt
     }
 
+    /// Seeds the first work cycle when reminders are enabled for the first time.
+    mutating func seedFirstWorkCycle(at now: Date = Date()) {
+        guard lastBreakEndedAt == nil else { return }
+        lastBreakEndedAt = now
+        previouslyOnQualifyingBreak = false
+    }
+
     /// Call each tick with current idle state. Returns true if a transition was detected.
     @discardableResult
     mutating func update(lastActivityAt: Date?, config: BreaksConfig, now: Date = Date()) -> Bool {

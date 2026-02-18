@@ -221,8 +221,13 @@ final class MetricsViewModel: ObservableObject {
     func updateBreaksConfig(_ config: BreaksConfig) {
         let normalized = config.normalized()
         guard normalized != breaksConfig else { return }
+        let wasRemindersEnabled = breaksConfig.remindersEnabled
         breaksConfig = normalized
         AppPreferences.shared.breaksConfig = normalized
+        if normalized.remindersEnabled && !wasRemindersEnabled {
+            breakTransitionTracker.seedFirstWorkCycle()
+            AppPreferences.shared.breakLastBreakEndedAt = breakTransitionTracker.lastBreakEndedAt
+        }
         evaluateBreaksAndHandleReminder()
     }
 
