@@ -96,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 enum BetaAccessPolicy {
     static func isExpired(now: Date = Date(), calendar: Calendar = .current) -> Bool {
-        guard let cutoffDate = calendar.date(from: DateComponents(year: 2026, month: 3, day: 1)) else {
+        guard let cutoffDate = calendar.date(from: DateComponents(year: 2026, month: 4, day: 1)) else {
             return false
         }
         return now >= cutoffDate
@@ -109,7 +109,7 @@ private struct BetaExpiredView: View {
             Text("TendonTally Beta Has Ended")
                 .font(.system(size: 28, weight: .bold))
 
-            Text("This beta ended on March 1, 2026. Thanks for testing TendonTally.")
+            Text("This beta ended on April 1, 2026. Thanks for testing TendonTally.")
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
 
@@ -117,7 +117,12 @@ private struct BetaExpiredView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
 
-            Link("tendontally.com", destination: URL(string: "https://tendontally.com")!)
+            Link(
+                "tendontally.com",
+                destination: URL(
+                    string: "https://tendontally.com/?utm_source=tendontally_app&utm_medium=beta_wall&utm_campaign=beta_end_apr_2026"
+                )!
+            )
                 .font(.system(size: 15, weight: .semibold))
         }
         .padding(28)

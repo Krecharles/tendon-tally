@@ -25,7 +25,7 @@ Env vars:
   APP_NAME         App bundle name in release-input (default: TendonTally.app)
   INPUT_DIR        Input folder for .app (default: ./release-input)
   OUTPUT_DIR       Output folder for .dmg (default: ./release-output)
-  VOLUME_NAME      Mounted DMG volume name (default: TendonTally)
+  VOLUME_NAME      Mounted DMG volume name (default: TendonTally Installer)
   BACKGROUND_IMAGE Optional DMG background image path
   ICON_LEFT_X      Finder icon X for app icon (default: 220)
   ICON_RIGHT_X     Finder icon X for Applications link (default: 580)
@@ -46,7 +46,7 @@ APP_NAME="${APP_NAME:-TendonTally.app}"
 INPUT_DIR="${INPUT_DIR:-$ROOT_DIR/release-input}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/release-output}"
 VERSION="v1"
-VOLUME_NAME="${VOLUME_NAME:-TendonTally}"
+VOLUME_NAME="${VOLUME_NAME:-TendonTally Installer}"
 BACKGROUND_IMAGE="${BACKGROUND_IMAGE:-}"
 ICON_LEFT_X="${ICON_LEFT_X:-220}"
 ICON_RIGHT_X="${ICON_RIGHT_X:-580}"
@@ -116,6 +116,15 @@ if [ "$SIGN_DMG" -eq 1 ] && [ -z "$SIGN_IDENTITY" ]; then
 fi
 
 APP_PATH="$INPUT_DIR/$APP_NAME"
+APP_BASENAME="${APP_NAME%.app}"
+
+if [ "$VOLUME_NAME" = "$APP_BASENAME" ]; then
+  echo "VOLUME_NAME '$VOLUME_NAME' conflicts with app bundle name '$APP_NAME' on this macOS/hdiutil setup."
+  echo "Use a distinct volume name, for example:"
+  echo "  VOLUME_NAME=\"$APP_BASENAME Installer\" ./make-dmg.sh $VERSION"
+  exit 1
+fi
+
 DMG_PATH="$OUTPUT_DIR/TendonTally-${VERSION}.dmg"
 STAGING_DIR="$OUTPUT_DIR/dmg-staging"
 RW_DMG_PATH="$OUTPUT_DIR/TendonTally-${VERSION}-rw.dmg"
