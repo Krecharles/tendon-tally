@@ -24,6 +24,76 @@ struct TendonTallyApp: App {
         .windowToolbarStyle(.unifiedCompact)
         .defaultSize(width: 1000, height: 600)
         .windowResizability(.contentSize)
+        .commands {
+            AppCommandMenu()
+        }
+    }
+}
+
+@MainActor
+private struct AppCommandMenu: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings...") {
+                selectDashboardTab(.settings)
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
+
+        CommandMenu("Navigate") {
+            Button("Today") {
+                selectDashboardTab(.today)
+            }
+            .keyboardShortcut("1", modifiers: .command)
+
+            Button("History") {
+                selectDashboardTab(.history)
+            }
+            .keyboardShortcut("2", modifiers: .command)
+
+            Button("Total") {
+                selectDashboardTab(.totalCalculation)
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
+            Button("Breaks") {
+                selectDashboardTab(.breaks)
+            }
+            .keyboardShortcut("4", modifiers: .command)
+
+            Button("Permissions") {
+                selectDashboardTab(.permissions)
+            }
+            .keyboardShortcut("5", modifiers: .command)
+        }
+
+        CommandMenu("Metrics") {
+            Button("Copy Today's Metrics") {
+                copyMetrics(for: .today)
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+
+            Button("Copy Yesterday's Metrics") {
+                copyMetrics(for: .yesterday)
+            }
+            .keyboardShortcut("c", modifiers: [.command, .option])
+        }
+    }
+
+    private func selectDashboardTab(_ tab: FullDashboardView.Tab) {
+        UserDefaults.standard.set(tab.rawValue, forKey: "selectedTab")
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        openWindow(id: "main-dashboard")
+    }
+
+    private func copyMetrics(for day: DailyExportDay) {
+        guard let viewModel = AppState.shared.viewModel,
+              viewModel.copyDailyMetricsToClipboard(for: day) != nil else {
+            NSSound.beep()
+            return
+        }
     }
 }
 
