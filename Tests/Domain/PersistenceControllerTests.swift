@@ -69,4 +69,5 @@ final class PersistenceControllerTests: XCTestCase {
 
         wait(for: [completionExpectation], timeout: 1.0)
     }
+
 }

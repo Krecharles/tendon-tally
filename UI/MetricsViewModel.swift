@@ -11,6 +11,16 @@ final class MetricsViewModel: ObservableObject {
         let total: Double
     }
 
+    private struct TimeSeriesCacheKey: Hashable {
+        let timeFrame: TimeFrame
+        let offset: Int
+    }
+
+    private struct AggregatedMetricsCacheKey: Hashable {
+        let timeFrame: TimeFrame
+        let offset: Int
+    }
+
     @Published var currentSample: UsageSample
     @Published var recentHistory: [UsageSample] = []
     @Published var todayTotals: UsageSample
@@ -48,6 +58,8 @@ final class MetricsViewModel: ObservableObject {
     private var previousBreakIdleSeconds: TimeInterval = 0
     private var breakResetWarningCountdown: Int = 0
     private var breakRemindersSnoozedUntil: Date?
+    private var timeSeriesCache: [TimeSeriesCacheKey: [TimeSeriesDataPoint]] = [:]
+    private var aggregatedMetricsCache: [AggregatedMetricsCacheKey: AggregatedMetrics] = [:]
 
     init(
         aggregator: MetricsAggregator,
@@ -92,6 +104,7 @@ final class MetricsViewModel: ObservableObject {
         aggregator.onUpdate = { [weak self] current, history in
             Task { @MainActor in
                 guard let self else { return }
+                self.invalidateHistoryDerivedCaches()
                 self.hasReceivedFirstAggregatorUpdate = true
                 self.currentSample = current
                 self.recentHistory = Array(history.prefix(12))
@@ -180,6 +193,11 @@ final class MetricsViewModel: ObservableObject {
     }
 
     func aggregatedMetrics(for timeFrame: TimeFrame, offset: Int) -> AggregatedMetrics {
+        let cacheKey = AggregatedMetricsCacheKey(timeFrame: timeFrame, offset: offset)
+        if let cached = aggregatedMetricsCache[cacheKey] {
+            return cached
+        }
+
         let (startDate, endDate) = timeFrame.dateRange(offset: offset)
         let now = Date()
 
@@ -212,15 +230,18 @@ final class MetricsViewModel: ObservableObject {
             }
         }
 
-        return AggregatedMetrics(
+        let result = AggregatedMetrics(
             keyPressCount: totalKeys,
             mouseClickCount: totalClicks,
             scrollTicks: totalScrollTicks,
             mouseDistance: totalMouseDistance
         )
+        aggregatedMetricsCache[cacheKey] = result
+        return result
     }
 
     func reloadHistory() {
+        invalidateHistoryDerivedCaches()
         aggregator.reloadHistory()
         evaluateBreaksAndHandleReminder()
     }
@@ -335,12 +356,34 @@ final class MetricsViewModel: ObservableObject {
     }
 
     func timeSeriesData(for timeFrame: TimeFrame, offset: Int) -> [TimeSeriesDataPoint] {
-        return TimeSeriesCalculator.calculateTimeSeries(
+        let cacheKey = TimeSeriesCacheKey(timeFrame: timeFrame, offset: offset)
+        if let cached = timeSeriesCache[cacheKey] {
+            return cached
+        }
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
             samples: aggregator.history,
             currentSample: offset == 0 ? aggregator.currentSample : nil,
             timeFrame: timeFrame,
             offset: offset
         )
+        timeSeriesCache[cacheKey] = result
+        return result
+    }
+
+    func hasAnyHistoryDataInLastMonth() -> Bool {
+        let allData = timeSeriesData(for: .lastMonth, offset: 0)
+        return allData.contains {
+            $0.keyPressCount > 0 ||
+            $0.mouseClickCount > 0 ||
+            $0.scrollTicks > 0 ||
+            $0.mouseDistance > 0
+        }
+    }
+
+    private func invalidateHistoryDerivedCaches() {
+        timeSeriesCache.removeAll(keepingCapacity: true)
+        aggregatedMetricsCache.removeAll(keepingCapacity: true)
     }
 
     var breakCardPhase: BreakPhase {

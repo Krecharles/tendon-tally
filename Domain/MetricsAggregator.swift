@@ -1,7 +1,7 @@
 import Foundation
 import os.log
 
-/// Aggregates raw activity counts from EventTapManager into fixed 1-minute UsageSample windows.
+/// Aggregates raw activity counts from EventTapManager into fixed 5-minute UsageSample windows.
 ///
 /// This class manages the rolling window system, periodically finalizing completed windows
 /// and starting new ones. It also handles persistence of historical data.
@@ -10,7 +10,7 @@ final class MetricsAggregator {
     private let persistence: MetricsPersisting
     private let logger = Logger(subsystem: "com.tendontally", category: "MetricsAggregator")
 
-    private let windowLength: TimeInterval = 1 * 60
+    private let windowLength: TimeInterval = 5 * 60
     private var windowStart: Date = Date()
     private(set) var lastActivityAt: Date?
 
@@ -71,14 +71,26 @@ final class MetricsAggregator {
                 self.windowStart = now
             } else if saved.end > now {
                 // Window is still active — resume it.
-                self.currentSample = saved
+                let normalizedEnd = max(saved.end, saved.start.addingTimeInterval(windowLength))
+                self.currentSample = UsageSample(
+                    id: saved.id,
+                    start: saved.start,
+                    end: normalizedEnd,
+                    keyPressCount: saved.keyPressCount,
+                    mouseClickCount: saved.mouseClickCount,
+                    scrollTicks: saved.scrollTicks,
+                    scrollDistance: saved.scrollDistance,
+                    mouseDistance: saved.mouseDistance
+                )
                 self.windowStart = saved.start
                 let formatter = ISO8601DateFormatter()
                 logger.info("Restored current sample from \(formatter.string(from: saved.start)) with \(saved.keyPressCount) keys, \(saved.mouseClickCount) clicks")
             } else {
                 // Window has expired — finalize it into history so no data is lost.
-                self.history.insert(saved, at: 0)
-                persistence.saveFinalizedSampleSync(saved)
+                if Self.sampleHasActivity(saved) {
+                    self.history.insert(saved, at: 0)
+                    persistence.saveFinalizedSampleSync(saved)
+                }
                 persistence.deleteCurrentSample()
                 let formatter = ISO8601DateFormatter()
                 logger.info("Finalized expired restored sample from \(formatter.string(from: saved.start)) with \(saved.keyPressCount) keys, \(saved.mouseClickCount) clicks")
@@ -186,10 +198,13 @@ final class MetricsAggregator {
         refreshCurrentSample(end: now)
 
         let finalizedSample = self.currentSample
-        self.history.insert(finalizedSample, at: 0)
-        logger.info("Rolled window: finalized sample with \(finalizedSample.keyPressCount) keys, \(finalizedSample.mouseClickCount) clicks, \(finalizedSample.scrollTicks) scroll ticks")
-
-        persistence.saveFinalizedSample(finalizedSample)
+        if Self.sampleHasActivity(finalizedSample) {
+            self.history.insert(finalizedSample, at: 0)
+            logger.info("Rolled window: finalized sample with \(finalizedSample.keyPressCount) keys, \(finalizedSample.mouseClickCount) clicks, \(finalizedSample.scrollTicks) scroll ticks")
+            persistence.saveFinalizedSample(finalizedSample)
+        } else {
+            logger.debug("Rolled window with no activity; skipping persistence")
+        }
 
         // Reset counters synchronously so the next snapshot reads zero.
         eventTapManager.resetCounters()
@@ -239,5 +254,12 @@ final class MetricsAggregator {
             guard let self else { return }
             self.onUpdate?(sample, historyCopy)
         }
+    }
+
+    private static func sampleHasActivity(_ sample: UsageSample) -> Bool {
+        sample.keyPressCount > 0 ||
+        sample.mouseClickCount > 0 ||
+        sample.scrollTicks > 0 ||
+        sample.mouseDistance > 0
     }
 }

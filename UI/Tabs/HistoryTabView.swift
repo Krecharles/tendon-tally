@@ -237,8 +237,7 @@ struct HistoryTabView: View {
     }
 
     private var hasAnyData: Bool {
-        let allData = viewModel.timeSeriesData(for: .lastMonth, offset: 0)
-        return allData.contains { $0.keyPressCount > 0 || $0.mouseClickCount > 0 || $0.scrollTicks > 0 || $0.mouseDistance > 0 }
+        viewModel.hasAnyHistoryDataInLastMonth()
     }
 
     // MARK: - Metric Filters

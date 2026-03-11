@@ -142,13 +142,14 @@ struct TotalConfig: Codable, Equatable {
 
 /// A single data point in a time series chart.
 struct TimeSeriesDataPoint: Identifiable {
-    let id = UUID()
     let time: Date
     let keyPressCount: Int
     let mouseClickCount: Int
     let scrollTicks: Int
     let mouseDistance: Double
     let isPartial: Bool // True if this time period is incomplete (e.g., current hour/day)
+
+    var id: Date { time }
     
     init(time: Date, keyPressCount: Int, mouseClickCount: Int, scrollTicks: Int, mouseDistance: Double, isPartial: Bool = false) {
         self.time = time
