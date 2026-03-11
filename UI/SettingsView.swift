@@ -6,6 +6,7 @@ struct SettingsView: View {
     @State private var launchAtLogin: Bool
     @State private var showInDock: Bool
     @State private var showDeleteConfirmation = false
+    @State private var quickExportFeedback: String?
 
     init(viewModel: MetricsViewModel? = nil) {
         self.viewModel = viewModel
@@ -40,85 +41,191 @@ struct SettingsView: View {
                 // Data
                 settingsCard(title: "Data") {
                     VStack(spacing: 0) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Open Data Folder")
-                                .font(.system(size: 13))
-                                .foregroundColor(.primary)
-                            Text("View stored usage files in Finder")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button(action: {
-                            NSWorkspace.shared.open(PersistenceController.shared.dataDirectory)
-                        }) {
-                            Text("Open")
-                                .font(.system(size: 12, weight: .medium))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(Color(NSColor.controlBackgroundColor))
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-
-                    Divider()
-                        .padding(.leading, 14)
-
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Delete All Data")
-                                .font(.system(size: 13))
-                                .foregroundColor(.primary)
-                            Text("Permanently remove all stored usage data")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button(action: {
-                            showDeleteConfirmation = true
-                        }) {
-                            Text("Delete")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(Color.red.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.red.opacity(0.2), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .confirmationDialog(
-                            "Delete All Data",
-                            isPresented: $showDeleteConfirmation,
-                            titleVisibility: .visible
-                        ) {
-                            Button("Delete", role: .destructive) {
-                                PersistenceController.shared.deleteAllSamples {
-                                    viewModel?.reloadHistory()
-                                }
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Open Data Folder")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.primary)
+                                Text("View stored usage files in Finder")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
                             }
-                            Button("Cancel", role: .cancel) {}
-                        } message: {
-                            Text("This will permanently delete all stored usage data. This action cannot be undone.")
+
+                            Spacer()
+
+                            Button(action: {
+                                NSWorkspace.shared.open(PersistenceController.shared.dataDirectory)
+                            }) {
+                                Text("Open")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 6)
+                                    .background(Color(NSColor.controlBackgroundColor))
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
                         }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Quick Export")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.primary)
+                                Text(quickExportFeedback ?? "Copy day totals as JSON")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(quickExportFeedback == nil ? .secondary : .green)
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                Button(action: {
+                                    copyMetrics(for: .today)
+                                }) {
+                                    Text("Today")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color(NSColor.controlBackgroundColor))
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(viewModel == nil)
+
+                                Button(action: {
+                                    copyMetrics(for: .yesterday)
+                                }) {
+                                    Text("Yesterday")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color(NSColor.controlBackgroundColor))
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(viewModel == nil)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Delete All Data")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.primary)
+                                Text("Permanently remove all stored usage data")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Button(action: {
+                                showDeleteConfirmation = true
+                            }) {
+                                Text("Delete")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 6)
+                                    .background(Color.red.opacity(0.1))
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .confirmationDialog(
+                                "Delete All Data",
+                                isPresented: $showDeleteConfirmation,
+                                titleVisibility: .visible
+                            ) {
+                                Button("Delete", role: .destructive) {
+                                    PersistenceController.shared.deleteAllSamples {
+                                        viewModel?.reloadHistory()
+                                    }
+                                }
+                                Button("Cancel", role: .cancel) {}
+                            } message: {
+                                Text("This will permanently delete all stored usage data. This action cannot be undone.")
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                }
+
+                // Keyboard shortcuts
+                settingsCard(title: "Keyboard Shortcuts") {
+                    VStack(spacing: 0) {
+                        Text("You can also view these in the macOS menu bar under Navigate and Metrics.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Open Settings", shortcut: "⌘,")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Go to Today", shortcut: "⌘1")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Go to History", shortcut: "⌘2")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Go to Total", shortcut: "⌘3")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Go to Breaks", shortcut: "⌘4")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Go to Permissions", shortcut: "⌘5")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Copy Today's Metrics", shortcut: "⇧⌘C")
+
+                        Divider()
+                            .padding(.leading, 14)
+
+                        shortcutRow(label: "Copy Yesterday's Metrics", shortcut: "⌥⌘C")
                     }
                 }
 
@@ -173,6 +280,22 @@ struct SettingsView: View {
         .padding(.vertical, 10)
     }
 
+    private func shortcutRow(label: String, shortcut: String) -> some View {
+        HStack(spacing: 10) {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Text(shortcut)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
     private func settingsCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
@@ -191,5 +314,21 @@ struct SettingsView: View {
                 )
         }
         .frame(maxWidth: 400)
+    }
+
+    private func copyMetrics(for day: DailyExportDay) {
+        guard let viewModel else { return }
+        guard let message = viewModel.copyDailyMetricsToClipboard(for: day) else {
+            quickExportFeedback = "Copy failed"
+            NSSound.beep()
+            return
+        }
+
+        quickExportFeedback = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            if quickExportFeedback == message {
+                quickExportFeedback = nil
+            }
+        }
     }
 }

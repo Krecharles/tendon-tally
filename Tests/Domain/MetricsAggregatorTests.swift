@@ -52,16 +52,23 @@ final class MetricsAggregatorTests: XCTestCase {
         }
     }
 
-    private func sample(start: Date, end: Date, keys: Int = 0) -> UsageSample {
+    private func sample(
+        start: Date,
+        end: Date,
+        keys: Int = 0,
+        clicks: Int = 0,
+        scrollTicks: Int = 0,
+        mouseDistance: Double = 0
+    ) -> UsageSample {
         UsageSample(
             id: UUID(),
             start: start,
             end: end,
             keyPressCount: keys,
-            mouseClickCount: 0,
-            scrollTicks: 0,
+            mouseClickCount: clicks,
+            scrollTicks: scrollTicks,
             scrollDistance: 0,
-            mouseDistance: 0
+            mouseDistance: mouseDistance
         )
     }
 
@@ -196,6 +203,99 @@ final class MetricsAggregatorTests: XCTestCase {
 
         XCTAssertEqual(viewModel.todayTotals.keyPressCount, 0)
         XCTAssertEqual(viewModel.todayTotals.mouseClickCount, 0)
+    }
+
+    @MainActor
+    func testDailyMetricsExportTextForYesterdayIncludesDateAndTotal() {
+        let now = Date()
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: now)
+        let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday)!
+        let sampleStart = startOfYesterday.addingTimeInterval(60 * 30)
+        let sampleEnd = sampleStart.addingTimeInterval(60)
+        let yesterdaySample = sample(
+            start: sampleStart,
+            end: sampleEnd,
+            keys: 10,
+            clicks: 20,
+            scrollTicks: 300,
+            mouseDistance: 4_000
+        )
+
+        let persistence = MockPersistence()
+        persistence.storedSamples = [yesterdaySample]
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(
+            eventTapManager: eventTap,
+            persistence: persistence,
+            now: now
+        )
+        let viewModel = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: BreakPillController()
+        )
+
+        let export = viewModel.dailyMetricsExportText(for: .yesterday)
+        let data = export.data(using: .utf8) ?? Data()
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let dateFormatter = DateFormatter()
+        dateFormatter.calendar = Calendar(identifier: .gregorian)
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let expectedDate = dateFormatter.string(from: startOfYesterday)
+
+        XCTAssertEqual(json?["date"] as? String, expectedDate)
+        let total = json?["total"] as? Double
+        XCTAssertNotNil(total)
+        XCTAssertEqual(total ?? 0, 37.0, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testDailyMetricsExportTextForYesterdayAsJSON() {
+        let now = Date()
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: now)
+        let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday)!
+        let sampleStart = startOfYesterday.addingTimeInterval(60 * 30)
+        let sampleEnd = sampleStart.addingTimeInterval(60)
+        let yesterdaySample = sample(
+            start: sampleStart,
+            end: sampleEnd,
+            keys: 12,
+            clicks: 8,
+            scrollTicks: 150,
+            mouseDistance: 2_000
+        )
+
+        let persistence = MockPersistence()
+        persistence.storedSamples = [yesterdaySample]
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(
+            eventTapManager: eventTap,
+            persistence: persistence,
+            now: now
+        )
+        let viewModel = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: BreakPillController()
+        )
+
+        let export = viewModel.dailyMetricsExportText(for: .yesterday)
+        let data = export.data(using: .utf8) ?? Data()
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(json?["keysPressed"] as? Int, 12)
+        XCTAssertEqual(json?["mouseClicks"] as? Int, 8)
+        let scrollSteps = json?["scrollSteps"] as? Double
+        let mouseDistanceKpx = json?["mouseDistanceKpx"] as? Double
+        let total = json?["total"] as? Double
+        XCTAssertNotNil(scrollSteps)
+        XCTAssertNotNil(mouseDistanceKpx)
+        XCTAssertNotNil(total)
+        XCTAssertEqual(scrollSteps ?? 0, 1.5, accuracy: 0.001)
+        XCTAssertEqual(mouseDistanceKpx ?? 0, 2.0, accuracy: 0.001)
+        XCTAssertEqual(total ?? 0, 23.5, accuracy: 0.001)
     }
 
     @MainActor

@@ -1,9 +1,16 @@
 import Foundation
 import Combine
+import AppKit
 
 /// View model that manages metrics display state and provides computed metrics for the UI.
 @MainActor
 final class MetricsViewModel: ObservableObject {
+    private struct DailyExportSnapshot {
+        let date: Date
+        let metrics: AggregatedMetrics
+        let total: Double
+    }
+
     @Published var currentSample: UsageSample
     @Published var recentHistory: [UsageSample] = []
     @Published var todayTotals: UsageSample
@@ -285,6 +292,48 @@ final class MetricsViewModel: ObservableObject {
         effectiveTotalConfig.apply(to: metrics)
     }
 
+    func dailyMetricsExportText(for day: DailyExportDay) -> String {
+        let snapshot = dailyExportSnapshot(for: day)
+        let dateString = formatDate(snapshot.date)
+
+        struct Payload: Codable {
+            let date: String
+            let keysPressed: Int
+            let mouseClicks: Int
+            let scrollSteps: Double
+            let mouseDistanceKpx: Double
+            let total: Double
+        }
+
+        let payload = Payload(
+            date: dateString,
+            keysPressed: snapshot.metrics.keyPressCount,
+            mouseClicks: snapshot.metrics.mouseClickCount,
+            scrollSteps: Double(snapshot.metrics.scrollTicks) / 100.0,
+            mouseDistanceKpx: snapshot.metrics.mouseDistance / 1_000.0,
+            total: snapshot.total
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(payload),
+              let json = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        return json
+    }
+
+    @discardableResult
+    func copyDailyMetricsToClipboard(for day: DailyExportDay) -> String? {
+        let output = dailyMetricsExportText(for: day)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        guard pasteboard.setString(output, forType: .string) else {
+            return nil
+        }
+        return "Copied \(day.rawValue)"
+    }
+
     func timeSeriesData(for timeFrame: TimeFrame, offset: Int) -> [TimeSeriesDataPoint] {
         return TimeSeriesCalculator.calculateTimeSeries(
             samples: aggregator.history,
@@ -484,4 +533,21 @@ final class MetricsViewModel: ObservableObject {
         }
         return "\(remainingSeconds)s"
     }
+
+    private func dailyExportSnapshot(for day: DailyExportDay) -> DailyExportSnapshot {
+        let metrics = aggregatedMetrics(for: .today, offset: day.offset)
+        let total = totalValue(for: metrics)
+        let (startDate, _) = TimeFrame.today.dateRange(offset: day.offset)
+        return DailyExportSnapshot(date: startDate, metrics: metrics, total: total)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
 }

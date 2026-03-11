@@ -75,6 +75,19 @@ enum MetricType: String, CaseIterable, Hashable {
     }
 }
 
+/// Day options for quick exports.
+enum DailyExportDay: String, CaseIterable, Hashable {
+    case today = "Today"
+    case yesterday = "Yesterday"
+
+    var offset: Int {
+        switch self {
+        case .today: return 0
+        case .yesterday: return -1
+        }
+    }
+}
+
 /// Aggregated metrics for a time period.
 struct AggregatedMetrics {
     let keyPressCount: Int

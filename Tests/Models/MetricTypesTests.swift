@@ -130,6 +130,13 @@ final class MetricTypesTests: XCTestCase {
         XCTAssertEqual(MetricType.allCases.count, 5)
     }
 
+    // MARK: - Daily Export
+
+    func testDailyExportDayOffsets() {
+        XCTAssertEqual(DailyExportDay.today.offset, 0)
+        XCTAssertEqual(DailyExportDay.yesterday.offset, -1)
+    }
+
     // MARK: - TotalConfig Codable
 
     func testTotalConfigCodableRoundTrip() throws {

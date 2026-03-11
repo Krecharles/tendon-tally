@@ -5,10 +5,12 @@ import SwiftUI
 ///
 /// This controller handles the creation and lifecycle of the NSStatusItem that appears
 /// in the macOS menu bar, and manages the popover that displays the compact dashboard view.
+@MainActor
 final class StatusItemController: NSObject {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
     private let viewModel: MetricsViewModel
+    private let quickActionsMenu = NSMenu()
     private var globalClickMonitor: Any?
     private var localClickMonitor: Any?
 
@@ -30,8 +32,10 @@ final class StatusItemController: NSObject {
             }
             button.action = #selector(togglePopover(_:))
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         self.statusItem = statusItem
+        configureQuickActionsMenu()
 
         popover.behavior = .transient
         popover.delegate = self
@@ -47,10 +51,55 @@ final class StatusItemController: NSObject {
     }
 
     @objc private func togglePopover(_ sender: AnyObject?) {
+        if let event = NSApp.currentEvent, event.type == .rightMouseUp {
+            showQuickActionsMenu(using: event)
+            return
+        }
+
         if popover.isShown {
             closePopover(sender)
         } else if let button = statusItem?.button {
             showPopover(relativeTo: button)
+        }
+    }
+
+    private func configureQuickActionsMenu() {
+        let copyTodayItem = NSMenuItem(
+            title: "Copy Today Metrics",
+            action: #selector(copyTodayMetrics),
+            keyEquivalent: ""
+        )
+        copyTodayItem.target = self
+        quickActionsMenu.addItem(copyTodayItem)
+
+        let copyYesterdayItem = NSMenuItem(
+            title: "Copy Yesterday Metrics",
+            action: #selector(copyYesterdayMetrics),
+            keyEquivalent: ""
+        )
+        copyYesterdayItem.target = self
+        quickActionsMenu.addItem(copyYesterdayItem)
+    }
+
+    private func showQuickActionsMenu(using event: NSEvent) {
+        closePopover(nil)
+        guard let button = statusItem?.button else { return }
+        NSMenu.popUpContextMenu(quickActionsMenu, with: event, for: button)
+    }
+
+    @objc
+    private func copyTodayMetrics() {
+        copyMetrics(for: .today)
+    }
+
+    @objc
+    private func copyYesterdayMetrics() {
+        copyMetrics(for: .yesterday)
+    }
+
+    private func copyMetrics(for day: DailyExportDay) {
+        if viewModel.copyDailyMetricsToClipboard(for: day) == nil {
+            NSSound.beep()
         }
     }
 
