@@ -5,10 +5,24 @@ struct BarChartView: View {
     let dataPoints: [TimeSeriesDataPoint]
     let selectedMetric: MetricType
     let timeFrame: TimeFrame
+    let monthAggregation: MonthAggregation
     let totalConfig: TotalConfig
     let hasAnyData: Bool
 
     @State private var hoveredBarTime: Date?
+
+    private struct WeeklyAverageSegment: Identifiable {
+        let weekStart: Date
+        let visibleStart: Date
+        let visibleEndExclusive: Date
+        let average: Double
+
+        var id: Date { weekStart }
+    }
+
+    private var isWeeklyOverlayMode: Bool {
+        timeFrame == .lastMonth && monthAggregation == .week
+    }
 
     private func value(for point: TimeSeriesDataPoint) -> Double {
         switch selectedMetric {
@@ -40,12 +54,53 @@ struct BarChartView: View {
         }
     }
 
+    private func formattedOverlayValue(_ value: Double) -> String {
+        String(format: "%.0f", value)
+    }
+
     private var averageValue: Double? {
         guard timeFrame != .today else { return nil }
+        guard !isWeeklyOverlayMode else { return nil }
         let values = dataPoints.map { value(for: $0) }
         let nonZero = values.filter { $0 > 0 }
         guard !nonZero.isEmpty else { return nil }
         return nonZero.reduce(0, +) / Double(nonZero.count)
+    }
+
+    private var weeklyAverageSegments: [WeeklyAverageSegment] {
+        guard isWeeklyOverlayMode else { return [] }
+
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: dataPoints) { isoWeekStart(for: $0.time) }
+
+        return grouped
+            .keys
+            .sorted()
+            .compactMap { weekStart in
+                guard let points = grouped[weekStart]?.sorted(by: { $0.time < $1.time }),
+                      let first = points.first,
+                      let last = points.last else {
+                    return nil
+                }
+
+                let values = points.map { value(for: $0) }
+                let average = values.reduce(0, +) / Double(values.count)
+                let endExclusive = calendar.date(byAdding: .day, value: 1, to: last.time) ?? last.time
+
+                return WeeklyAverageSegment(
+                    weekStart: weekStart,
+                    visibleStart: first.time,
+                    visibleEndExclusive: endExclusive,
+                    average: average
+                )
+            }
+    }
+
+    private var verticalBarStyle: AnyShapeStyle {
+        if isWeeklyOverlayMode {
+            return AnyShapeStyle(Color.secondary.opacity(0.28))
+        }
+        return AnyShapeStyle(selectedMetric.color.gradient)
     }
 
     var body: some View {
@@ -91,8 +146,28 @@ struct BarChartView: View {
                     x: .value("Time", point.time, unit: timeUnit),
                     y: .value("Value", value(for: point))
                 )
-                .foregroundStyle(selectedMetric.color.gradient)
-                .opacity(hoveredPoint != nil && !Calendar.current.isDate(point.time, equalTo: hoveredPoint!.time, toGranularity: timeUnit) ? 0.4 : 1.0)
+                .foregroundStyle(verticalBarStyle)
+                .opacity(hoveredPoint != nil && !isSameBucket(point.time, hoveredPoint!.time) ? 0.4 : 1.0)
+            }
+
+            ForEach(weeklyAverageSegments) { segment in
+                RuleMark(
+                    xStart: .value("Week Start", segment.visibleStart),
+                    xEnd: .value("Week End", segment.visibleEndExclusive),
+                    y: .value("Weekly Average", segment.average)
+                )
+                .lineStyle(StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                .foregroundStyle(selectedMetric.color)
+                .annotation(position: .top, alignment: .trailing) {
+                    Text(formattedOverlayValue(segment.average))
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(selectedMetric.color)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color(NSColor.controlBackgroundColor).opacity(0.9))
+                        .cornerRadius(4)
+                }
             }
 
             if let avg = averageValue {
@@ -178,7 +253,7 @@ struct BarChartView: View {
     }
 
     private func selectedDataPoint(for time: Date) -> TimeSeriesDataPoint? {
-        dataPoints.first(where: { Calendar.current.isDate($0.time, equalTo: time, toGranularity: timeUnit) })
+        dataPoints.first(where: { isSameBucket($0.time, time) })
     }
 
     @ViewBuilder
@@ -241,5 +316,16 @@ struct BarChartView: View {
             formatter.dateFormat = "MMM d"
             return formatter.string(from: date)
         }
+    }
+
+    private func isoWeekStart(for date: Date) -> Date {
+        var isoCalendar = Calendar(identifier: .iso8601)
+        isoCalendar.timeZone = TimeZone.current
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+        return isoCalendar.dateInterval(of: .weekOfYear, for: normalizedDate)?.start ?? normalizedDate
+    }
+
+    private func isSameBucket(_ lhs: Date, _ rhs: Date) -> Bool {
+        return Calendar.current.isDate(lhs, equalTo: rhs, toGranularity: timeUnit)
     }
 }

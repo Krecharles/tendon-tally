@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryTabView: View {
     @ObservedObject var viewModel: MetricsViewModel
+    @State private var monthAggregation: MonthAggregation = .day
 
     var body: some View {
         ScrollView {
@@ -12,6 +13,9 @@ struct HistoryTabView: View {
                 HStack(spacing: 12) {
                     timeFrameSelector
                     dateNavigation
+                    if viewModel.selectedTimeFrame == .lastMonth {
+                        monthAggregationSelector
+                    }
                 }
                 .padding(.bottom, 12)
 
@@ -127,6 +131,39 @@ struct HistoryTabView: View {
         }
     }
 
+    private var monthAggregationSelector: some View {
+        HStack(spacing: 2) {
+            ForEach(MonthAggregation.allCases, id: \.self) { aggregation in
+                let isSelected = monthAggregation == aggregation
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        monthAggregation = aggregation
+                    }
+                }) {
+                    Text(aggregation.rawValue)
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                        .foregroundColor(isSelected ? .white : .secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isSelected ? Color.accentColor : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(NSColor.windowBackgroundColor).opacity(0.5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+
     private var dateRangeLabelText: String {
         let (startDate, endDate) = viewModel.selectedTimeFrame.dateRange(offset: viewModel.timeFrameOffset)
         let calendar = Calendar.current
@@ -188,6 +225,7 @@ struct HistoryTabView: View {
             dataPoints: dataPoints,
             selectedMetric: viewModel.selectedMetric,
             timeFrame: viewModel.selectedTimeFrame,
+            monthAggregation: monthAggregation,
             totalConfig: viewModel.effectiveTotalConfig,
             hasAnyData: hasAnyData
         )

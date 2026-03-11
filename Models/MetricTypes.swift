@@ -52,6 +52,12 @@ enum TimeFrame: String, CaseIterable {
     }
 }
 
+/// Aggregation options for month history charts.
+enum MonthAggregation: String, CaseIterable, Hashable {
+    case day = "Day"
+    case week = "Week"
+}
+
 /// Types of metrics that can be tracked and displayed.
 enum MetricType: String, CaseIterable, Hashable {
     case keys = "Keys Pressed"
