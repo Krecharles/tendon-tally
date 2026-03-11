@@ -177,58 +177,6 @@ struct SettingsView: View {
                     }
                 }
 
-                // Keyboard shortcuts
-                settingsCard(title: "Keyboard Shortcuts") {
-                    VStack(spacing: 0) {
-                        Text("You can also view these in the macOS menu bar under Navigate and Metrics.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Open Settings", shortcut: "⌘,")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Go to Today", shortcut: "⌘1")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Go to History", shortcut: "⌘2")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Go to Total", shortcut: "⌘3")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Go to Breaks", shortcut: "⌘4")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Go to Permissions", shortcut: "⌘5")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Copy Today's Metrics", shortcut: "⇧⌘C")
-
-                        Divider()
-                            .padding(.leading, 14)
-
-                        shortcutRow(label: "Copy Yesterday's Metrics", shortcut: "⌥⌘C")
-                    }
-                }
-
                 // Privacy
                 HStack(spacing: 8) {
                     Image(systemName: "lock.fill")
@@ -275,22 +223,6 @@ struct SettingsView: View {
                 .onChange(of: isOn.wrappedValue) { _, newValue in
                     onChange(newValue)
                 }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
-    private func shortcutRow(label: String, shortcut: String) -> some View {
-        HStack(spacing: 10) {
-            Text(label)
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
-
-            Spacer()
-
-            Text(shortcut)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                .foregroundColor(.secondary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
