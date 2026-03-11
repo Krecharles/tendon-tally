@@ -35,6 +35,11 @@ private struct AppCommandMenu: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        FileMenuCleanupCommands()
+        EditMenuCleanupCommands()
+        ViewMenuCleanupCommands()
+        WindowHelpCleanupCommands()
+
         CommandGroup(replacing: .appSettings) {
             Button("Settings...") {
                 selectDashboardTab(.settings)
@@ -42,7 +47,8 @@ private struct AppCommandMenu: Commands {
             .keyboardShortcut(",", modifiers: .command)
         }
 
-        CommandMenu("Navigate") {
+        // Put app navigation shortcuts into the built-in View menu.
+        CommandGroup(replacing: .sidebar) {
             Button("Today") {
                 selectDashboardTab(.today)
             }
@@ -97,6 +103,38 @@ private struct AppCommandMenu: Commands {
     }
 }
 
+private struct FileMenuCleanupCommands: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {}
+        CommandGroup(replacing: .saveItem) {}
+        CommandGroup(replacing: .importExport) {}
+        CommandGroup(replacing: .printItem) {}
+    }
+}
+
+private struct EditMenuCleanupCommands: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .undoRedo) {}
+        CommandGroup(replacing: .pasteboard) {}
+        CommandGroup(replacing: .textEditing) {}
+        CommandGroup(replacing: .textFormatting) {}
+    }
+}
+
+private struct ViewMenuCleanupCommands: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .toolbar) {}
+        CommandGroup(replacing: .windowSize) {}
+    }
+}
+
+private struct WindowHelpCleanupCommands: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .windowArrangement) {}
+        CommandGroup(replacing: .help) {}
+    }
+}
+
 /// AppKit delegate responsible for setting up the status bar item and popover.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItemController: StatusItemController?
@@ -138,6 +176,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Bring app to foreground on launch
         NSApplication.shared.activate(ignoringOtherApps: true)
+        sanitizeMainMenu()
+        DispatchQueue.main.async { [weak self] in
+            self?.sanitizeMainMenu()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -159,8 +201,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The Window scene will be opened by SwiftUI automatically
         if !flag {
             NSApplication.shared.activate(ignoringOtherApps: true)
+            sanitizeMainMenu()
         }
         return true
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        sanitizeMainMenu()
+    }
+
+    private func sanitizeMainMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+
+        if let formatItem = mainMenu.items.first(where: { $0.title == "Format" }) {
+            mainMenu.removeItem(formatItem)
+        }
+
+        removeMenuItems(titled: "Enter Full Screen", in: mainMenu)
+        removeMenuItems(titled: "Exit Full Screen", in: mainMenu)
+    }
+
+    private func removeMenuItems(titled title: String, in menu: NSMenu) {
+        for index in stride(from: menu.items.count - 1, through: 0, by: -1) {
+            let item = menu.items[index]
+            if item.title == title {
+                menu.removeItem(at: index)
+                continue
+            }
+            if let submenu = item.submenu {
+                removeMenuItems(titled: title, in: submenu)
+            }
+        }
     }
 }
 
