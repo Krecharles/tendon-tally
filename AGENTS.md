@@ -6,7 +6,7 @@ Menu bar app tracking keyboard/mouse activity in 1-minute rolling windows. Swift
 
 ## Architecture
 
-- **App/** - Entry point (@main), NSStatusItem lifecycle, AppState singleton, beta-access cutoff gate (`March 1, 2026`)
+- **App/** - Entry point (@main), NSStatusItem lifecycle, AppState singleton
 - **Domain/** - EventTapManager (event tap), MetricsAggregator (1-min windows), PersistenceController (JSON storage), TimeSeriesCalculator, break reminder evaluation/controllers, settings/state services
 - **Domain/Protocols/** - EventTapping, MetricsPersisting, MetricsAggregating (for testability/DI)
 - **Models/** - UsageSample, MetricTypes, RawActivitySnapshot, Breaks/KUI config models

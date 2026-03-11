@@ -10,7 +10,6 @@ final class AppState: ObservableObject {
     static let shared = AppState()
     
     @Published var viewModel: MetricsViewModel?
-    @Published var isBetaExpired: Bool = false
     
     /// Notification name for opening the dashboard window
     static let openDashboardNotification = Notification.Name("openDashboard")
@@ -19,9 +18,5 @@ final class AppState: ObservableObject {
     
     func setViewModel(_ viewModel: MetricsViewModel) {
         self.viewModel = viewModel
-    }
-
-    func setBetaExpired(_ expired: Bool) {
-        isBetaExpired = expired
     }
 }
