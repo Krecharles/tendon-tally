@@ -231,9 +231,15 @@ struct HistoryTabView: View {
             for: viewModel.selectedTimeFrame,
             offset: viewModel.timeFrameOffset
         )
+        let weeklyAverageDataPoints = viewModel.weeklyOverlayDataPoints(
+            for: viewModel.selectedTimeFrame,
+            monthAggregation: monthAggregation,
+            offset: viewModel.timeFrameOffset
+        )
 
         return BarChartView(
             dataPoints: dataPoints,
+            weeklyAverageDataPoints: weeklyAverageDataPoints,
             selectedMetric: viewModel.selectedMetric,
             timeFrame: viewModel.selectedTimeFrame,
             monthAggregation: monthAggregation,

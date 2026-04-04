@@ -1,0 +1,145 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-release:
+    runs-on:
+      - self-hosted
+      - macOS
+      - tendon-tally-release
+
+    env:
+      SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+      NOTARY_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+      PROJECT_FILE: TendonTally/TendonTally.xcodeproj/project.pbxproj
+      XCODEPROJ_PATH: TendonTally/TendonTally.xcodeproj
+      SCHEME: TendonTally
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SIGN_IDENTITY}" ]]; then
+            echo "Missing required secret: SIGN_IDENTITY"
+            exit 1
+          fi
+          if [[ -z "${NOTARY_PROFILE}" ]]; then
+            echo "Missing required secret: NOTARY_PROFILE"
+            exit 1
+          fi
+
+      - name: Derive release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must match vX.Y.Z. Got: ${TAG}"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          MARKETING_VERSION="$(grep -E 'MARKETING_VERSION = ' "${PROJECT_FILE}" | head -n 1 | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/')"
+          DEVELOPMENT_TEAM="$(grep -E 'DEVELOPMENT_TEAM = ' "${PROJECT_FILE}" | head -n 1 | sed -E 's/.*DEVELOPMENT_TEAM = ([^;]+);/\1/')"
+
+          if [[ -z "${MARKETING_VERSION}" ]]; then
+            echo "Could not read MARKETING_VERSION from ${PROJECT_FILE}"
+            exit 1
+          fi
+          if [[ -z "${DEVELOPMENT_TEAM}" ]]; then
+            echo "Could not read DEVELOPMENT_TEAM from ${PROJECT_FILE}"
+            exit 1
+          fi
+
+          if [[ "${MARKETING_VERSION}" != "${VERSION}" ]]; then
+            echo "Tag version (${VERSION}) does not match MARKETING_VERSION (${MARKETING_VERSION})."
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "development_team=${DEVELOPMENT_TEAM}" >> "${GITHUB_OUTPUT}"
+
+      - name: Prepare directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build release-input release-output
+          mkdir -p build release-input release-output
+
+      - name: Archive signed app
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE_PATH="${PWD}/build/TendonTally.xcarchive"
+          xcodebuild archive \
+            -project "${XCODEPROJ_PATH}" \
+            -scheme "${SCHEME}" \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -archivePath "${ARCHIVE_PATH}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="${SIGN_IDENTITY}" \
+            DEVELOPMENT_TEAM="${{ steps.meta.outputs.development_team }}" \
+            clean
+
+          APP_PATH="${ARCHIVE_PATH}/Products/Applications/TendonTally.app"
+          if [[ ! -d "${APP_PATH}" ]]; then
+            echo "Expected app not found at ${APP_PATH}"
+            exit 1
+          fi
+          cp -R "${APP_PATH}" "release-input/TendonTally.app"
+
+      - name: Build DMG, notarize, staple, validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGN_IDENTITY="${SIGN_IDENTITY}" \
+          NOTARY_PROFILE="${NOTARY_PROFILE}" \
+          ./make-dmg.sh "${{ steps.meta.outputs.tag }}" --all
+
+      - name: Create stable + versioned artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSIONED_DMG="release-output/TendonTally-${{ steps.meta.outputs.tag }}.dmg"
+          STABLE_DMG="release-output/TendonTally.dmg"
+          if [[ ! -f "${VERSIONED_DMG}" ]]; then
+            echo "Expected DMG not found at ${VERSIONED_DMG}"
+            exit 1
+          fi
+          cp -f "${VERSIONED_DMG}" "${STABLE_DMG}"
+
+          (
+            cd release-output
+            shasum -a 256 "TendonTally.dmg" "TendonTally-${{ steps.meta.outputs.tag }}.dmg" > SHA256SUMS.txt
+          )
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: TendonTally ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            release-output/TendonTally.dmg
+            release-output/TendonTally-${{ steps.meta.outputs.tag }}.dmg
+            release-output/SHA256SUMS.txt

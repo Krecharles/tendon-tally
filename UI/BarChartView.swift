@@ -3,6 +3,7 @@ import Charts
 
 struct BarChartView: View {
     let dataPoints: [TimeSeriesDataPoint]
+    let weeklyAverageDataPoints: [TimeSeriesDataPoint]
     let selectedMetric: MetricType
     let timeFrame: TimeFrame
     let monthAggregation: MonthAggregation
@@ -71,19 +72,21 @@ struct BarChartView: View {
         guard isWeeklyOverlayMode else { return [] }
 
         let calendar = Calendar.current
-        let grouped = Dictionary(grouping: dataPoints) { isoWeekStart(for: $0.time) }
+        let groupedVisible = Dictionary(grouping: dataPoints) { isoWeekStart(for: $0.time) }
+        let groupedForAverage = Dictionary(grouping: weeklyAverageDataPoints) { isoWeekStart(for: $0.time) }
 
-        return grouped
+        return groupedVisible
             .keys
             .sorted()
             .compactMap { weekStart in
-                guard let points = grouped[weekStart]?.sorted(by: { $0.time < $1.time }),
-                      let first = points.first,
-                      let last = points.last else {
+                guard let visiblePoints = groupedVisible[weekStart]?.sorted(by: { $0.time < $1.time }),
+                      let first = visiblePoints.first,
+                      let last = visiblePoints.last else {
                     return nil
                 }
 
-                let values = points.map { value(for: $0) }
+                let averagePoints = groupedForAverage[weekStart]?.sorted(by: { $0.time < $1.time }) ?? visiblePoints
+                let values = averagePoints.map { value(for: $0) }
                 let average = values.reduce(0, +) / Double(values.count)
                 let endExclusive = calendar.date(byAdding: .day, value: 1, to: last.time) ?? last.time
 

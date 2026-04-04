@@ -9,6 +9,19 @@ This project is a Swift + SwiftUI based macOS menu bar application that helps yo
 
 Activity is tracked in **rolling 1‑minute windows**, and a simple **dashboard** in a popover shows the current window and recent history. The architecture is inspired by the open‑source project [OctoMouse](https://github.com/KonsomeJona/OctoMouse), but implemented in Swift with SwiftUI and an AppKit bridge.
 
+### Download
+
+- Latest stable DMG: `https://github.com/Krecharles/tendon-tally/releases/latest/download/TendonTally.dmg`
+- Release page: `https://github.com/Krecharles/tendon-tally/releases/latest`
+
+Optional checksum verification after download:
+
+```bash
+shasum -a 256 TendonTally.dmg
+```
+
+Compare the output against `SHA256SUMS.txt` on the release page.
+
 ### Project layout
 
 - `App/` – SwiftUI `@main` app entry point, `NSStatusItem`/popover wiring, and shared app state.

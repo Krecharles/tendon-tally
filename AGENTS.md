@@ -26,11 +26,27 @@ swift test         # Run tests
 
 ## Release Packaging
 
-- Drop exported app bundle at `release-input/TendonTally.app`
-- Build unsigned DMG with `./make-dmg.sh v1` (replace `v1` with release version label)
-- Build + sign + notarize + staple + validate in one run:
+- CI release is tag-driven via `.github/workflows/release.yml`
+- Push stable tag `vX.Y.Z` to publish a GitHub Release with:
+  - `TendonTally.dmg` (stable permalink target)
+  - `TendonTally-vX.Y.Z.dmg` (versioned artifact)
+  - `SHA256SUMS.txt`
+- Workflow gates:
+  - tag must match `vX.Y.Z`
+  - tag version must equal Xcode `MARKETING_VERSION`
+  - archive build must succeed
+  - DMG sign/notarize/staple/validate must succeed
+- Required repo secrets for release workflow:
+  - `SIGN_IDENTITY` (Developer ID Application identity string)
+  - `NOTARY_PROFILE` (notarytool keychain profile name, e.g. `TENDON_TALLY_NOTARY`)
+- Self-hosted runner labels expected by workflow:
+  - `self-hosted`, `macOS`, `tendon-tally-release`
+
+Local manual packaging (fallback):
+- Build unsigned DMG with `./make-dmg.sh v1` (replace `v1` with release label)
+- Build + sign + notarize + staple + validate:
   `SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE="TENDON_TALLY_NOTARY" ./make-dmg.sh v1 --all`
-- Output DMG is written to `release-output/TendonTally-v1.dmg`
+- Output DMG path: `release-output/TendonTally-v1.dmg`
 - Script applies drag-to-Applications DMG layout with no background by default
 - Script blesses the mounted volume so Finder opens the install window on mount
 - Optional custom background: `BACKGROUND_IMAGE=/path/to/background.png ./make-dmg.sh v1`
@@ -40,9 +56,9 @@ swift test         # Run tests
 ## Build System
 
 - **Primary:** Swift Package Manager (Package.swift)
-- **Xcode project:** Used ONLY for Assets.xcassets management
-  - Do NOT add source files to Xcode project
-  - Assets changes require Xcode, then rebuild with SPM
+- **Xcode project:** Used for release archive/export signing pipeline and Assets.xcassets management
+  - Keep source of truth in SPM targets for app code
+  - Assets and release signing/archive flow depend on `TendonTally/TendonTally.xcodeproj`
 
 ## Key Patterns
 

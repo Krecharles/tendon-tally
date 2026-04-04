@@ -338,6 +338,47 @@ final class MetricsViewModel: ObservableObject {
         return result
     }
 
+    func weeklyOverlayDataPoints(
+        for timeFrame: TimeFrame,
+        monthAggregation: MonthAggregation,
+        offset: Int
+    ) -> [TimeSeriesDataPoint] {
+        let visible = timeSeriesData(for: timeFrame, offset: offset)
+        guard timeFrame == .lastMonth, monthAggregation == .week else {
+            return visible
+        }
+        guard let firstVisible = visible.first?.time,
+              let lastVisible = visible.last?.time else {
+            return visible
+        }
+
+        let rangeStart = isoWeekStart(for: firstVisible)
+        var isoCalendar = Calendar(identifier: .iso8601)
+        isoCalendar.timeZone = TimeZone.current
+        let trailingWeekStart = isoWeekStart(for: lastVisible)
+        let rangeEndExclusive = isoCalendar.date(byAdding: .day, value: 7, to: trailingWeekStart) ?? trailingWeekStart
+
+        var mergedByDay: [Date: TimeSeriesDataPoint] = [:]
+        let calendar = Calendar.current
+
+        let previousWindow = timeSeriesData(for: .lastMonth, offset: offset - 1)
+        let nextWindow = offset < 0 ? timeSeriesData(for: .lastMonth, offset: offset + 1) : []
+        let mergeOrder = [previousWindow, nextWindow, visible]
+
+        for points in mergeOrder {
+            for point in points {
+                let day = calendar.startOfDay(for: point.time)
+                guard day >= rangeStart, day < rangeEndExclusive else { continue }
+                mergedByDay[day] = point
+            }
+        }
+
+        return mergedByDay
+            .keys
+            .sorted()
+            .compactMap { mergedByDay[$0] }
+    }
+
     func hasAnyHistoryData(for timeFrame: TimeFrame) -> Bool {
         let allData = timeSeriesData(for: timeFrame, offset: 0)
         return allData.contains {
@@ -351,6 +392,13 @@ final class MetricsViewModel: ObservableObject {
     private func invalidateHistoryDerivedCaches() {
         timeSeriesCache.removeAll(keepingCapacity: true)
         aggregatedMetricsCache.removeAll(keepingCapacity: true)
+    }
+
+    private func isoWeekStart(for date: Date) -> Date {
+        var isoCalendar = Calendar(identifier: .iso8601)
+        isoCalendar.timeZone = TimeZone.current
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+        return isoCalendar.dateInterval(of: .weekOfYear, for: normalizedDate)?.start ?? normalizedDate
     }
 
     var breakCardPhase: BreakPhase {
