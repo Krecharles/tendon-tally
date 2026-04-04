@@ -161,6 +161,35 @@ final class TimeSeriesCalculatorTests: XCTestCase {
         XCTAssertEqual(totalKeys, 300)
     }
 
+    func testYearlyBucketingUsesWeekGranularity() {
+        let now = Date()
+        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now)!
+        let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: now)!
+
+        let s1 = makeSample(start: calendar.startOfDay(for: oneWeekAgo).addingTimeInterval(3600), keys: 100)
+        let s2 = makeSample(start: calendar.startOfDay(for: twoWeeksAgo).addingTimeInterval(3600), keys: 200)
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: [s1, s2],
+            currentSample: nil,
+            timeFrame: .lastYear,
+            offset: 0,
+            now: now
+        )
+
+        // 52+ weekly buckets, with possible extra boundary buckets depending on alignment.
+        XCTAssertGreaterThanOrEqual(result.count, 52)
+        let totalKeys = result.reduce(0) { $0 + $1.keyPressCount }
+        XCTAssertEqual(totalKeys, 300)
+
+        for point in result {
+            let weekStart = calendar.dateInterval(of: .weekOfYear, for: point.time)?.start ?? point.time
+            XCTAssertEqual(point.time, weekStart)
+            let hour = calendar.component(.hour, from: point.time)
+            XCTAssertEqual(hour, 0)
+        }
+    }
+
     // MARK: - All Metrics Tracked
 
     func testAllMetricsAreAggregated() {

@@ -5,6 +5,7 @@ enum TimeFrame: String, CaseIterable {
     case today = "Today"
     case lastWeek = "Week"
     case lastMonth = "Month"
+    case lastYear = "Year"
     
     func dateRange(offset: Int = 0) -> (start: Date, end: Date) {
         let now = Date()
@@ -45,6 +46,14 @@ enum TimeFrame: String, CaseIterable {
             // offset 0: [now-30d, now]
             // offset -1: previous 30-day window
             let windowDays = 30
+            let windowSeconds = TimeInterval(windowDays * 24 * 60 * 60)
+            let shiftedEnd = now.addingTimeInterval(TimeInterval(offset * windowDays) * 24 * 60 * 60)
+            return (start: shiftedEnd.addingTimeInterval(-windowSeconds), end: shiftedEnd)
+        case .lastYear:
+            // Rolling 365-day windows.
+            // offset 0: [now-365d, now]
+            // offset -1: previous 365-day window
+            let windowDays = 365
             let windowSeconds = TimeInterval(windowDays * 24 * 60 * 60)
             let shiftedEnd = now.addingTimeInterval(TimeInterval(offset * windowDays) * 24 * 60 * 60)
             return (start: shiftedEnd.addingTimeInterval(-windowSeconds), end: shiftedEnd)

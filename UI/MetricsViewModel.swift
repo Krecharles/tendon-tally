@@ -272,39 +272,6 @@ final class MetricsViewModel: ObservableObject {
         evaluateBreaksAndHandleReminder()
     }
 
-    func comparisonStats(for timeFrame: TimeFrame, offset: Int) -> (currentTotal: Double, percentageChange: Double?, hasPriorData: Bool) {
-        let current = aggregatedMetrics(for: timeFrame, offset: offset)
-        let prior = aggregatedMetrics(for: timeFrame, offset: offset - 1)
-
-        let currentValue = metricValue(from: current, for: selectedMetric)
-        let priorValue = metricValue(from: prior, for: selectedMetric)
-
-        let hasPriorData = priorValue > 0
-        let percentageChange: Double?
-        if hasPriorData {
-            percentageChange = ((currentValue - priorValue) / priorValue) * 100.0
-        } else {
-            percentageChange = nil
-        }
-
-        return (currentTotal: currentValue, percentageChange: percentageChange, hasPriorData: hasPriorData)
-    }
-
-    private func metricValue(from metrics: AggregatedMetrics, for metric: MetricType) -> Double {
-        switch metric {
-        case .keys:
-            return Double(metrics.keyPressCount)
-        case .clicks:
-            return Double(metrics.mouseClickCount)
-        case .scroll:
-            return Double(metrics.scrollTicks) / 100.0
-        case .mouseDistance:
-            return metrics.mouseDistance / 1000.0
-        case .aggregate:
-            return effectiveTotalConfig.apply(to: metrics)
-        }
-    }
-
     var effectiveTotalConfig: TotalConfig {
         advancedTotalCalculationEnabled ? totalConfig : .default
     }
@@ -371,8 +338,8 @@ final class MetricsViewModel: ObservableObject {
         return result
     }
 
-    func hasAnyHistoryDataInLastMonth() -> Bool {
-        let allData = timeSeriesData(for: .lastMonth, offset: 0)
+    func hasAnyHistoryData(for timeFrame: TimeFrame) -> Bool {
+        let allData = timeSeriesData(for: timeFrame, offset: 0)
         return allData.contains {
             $0.keyPressCount > 0 ||
             $0.mouseClickCount > 0 ||

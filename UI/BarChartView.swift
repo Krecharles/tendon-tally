@@ -284,7 +284,7 @@ struct BarChartView: View {
         case .lastWeek, .lastMonth:
             return .day
         case .lastYear:
-            return .month
+            return .weekOfYear
         }
     }
 
@@ -295,7 +295,7 @@ struct BarChartView: View {
         case .lastWeek, .lastMonth:
             return .day
         case .lastYear:
-            return .month
+            return .weekOfYear
         }
     }
 
@@ -308,7 +308,7 @@ struct BarChartView: View {
         case .lastMonth:
             return 5
         case .lastYear:
-            return 1
+            return 4
         }
     }
 
@@ -324,7 +324,7 @@ struct BarChartView: View {
             return formatter.string(from: date)
         case .lastYear:
             let formatter = DateFormatter()
-            formatter.dateFormat = "MMM yy"
+            formatter.dateFormat = "MMM d"
             return formatter.string(from: date)
         }
     }

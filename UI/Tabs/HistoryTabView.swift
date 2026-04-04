@@ -2,7 +2,12 @@ import SwiftUI
 
 struct HistoryTabView: View {
     @ObservedObject var viewModel: MetricsViewModel
-    @State private var monthAggregation: MonthAggregation = .day
+    @AppStorage("historyMonthAggregation") private var monthAggregationRawValue: String = MonthAggregation.day.rawValue
+
+    private var monthAggregation: MonthAggregation {
+        get { MonthAggregation(rawValue: monthAggregationRawValue) ?? .day }
+        nonmutating set { monthAggregationRawValue = newValue.rawValue }
+    }
 
     var body: some View {
         ScrollView {
@@ -22,7 +27,6 @@ struct HistoryTabView: View {
                 metricFilters
                     .padding(.bottom, 20)
 
-                summaryCard
                 chartCard
             }
             .padding(.horizontal, 24)
@@ -177,6 +181,8 @@ struct HistoryTabView: View {
                 return "Last 7 days"
             case .lastMonth:
                 return "Last 30 days"
+            case .lastYear:
+                return "Last 365 days"
             }
         } else {
             switch viewModel.selectedTimeFrame {
@@ -209,6 +215,11 @@ struct HistoryTabView: View {
                     let endStrWithYear = formatter.string(from: endDate)
                     return "\(startStr) \u{2013} \(endStrWithYear)"
                 }
+            case .lastYear:
+                formatter.dateFormat = "MMM d, yyyy"
+                let startStr = formatter.string(from: startDate)
+                let endStr = formatter.string(from: endDate)
+                return "\(startStr) \u{2013} \(endStr)"
             }
         }
     }
@@ -233,11 +244,11 @@ struct HistoryTabView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
         .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 12, bottomTrailingRadius: 12, topTrailingRadius: 0))
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 12, bottomTrailingRadius: 12, topTrailingRadius: 12))
     }
 
     private var hasAnyData: Bool {
-        viewModel.hasAnyHistoryDataInLastMonth()
+        viewModel.hasAnyHistoryData(for: viewModel.selectedTimeFrame)
     }
 
     // MARK: - Metric Filters
@@ -258,79 +269,5 @@ struct HistoryTabView: View {
 
             Spacer()
         }
-    }
-
-    // MARK: - Summary Stats
-
-    @State private var showingChangeInfo = false
-
-    private var summaryCard: some View {
-        let stats = viewModel.comparisonStats(
-            for: viewModel.selectedTimeFrame,
-            offset: viewModel.timeFrameOffset
-        )
-
-        return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Circle()
-                .fill(viewModel.selectedMetric.color)
-                .frame(width: 8, height: 8)
-
-            Text("\(formattedTotal(stats.currentTotal)) \(viewModel.selectedMetric.unitLabel)")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.primary)
-
-            Text("this period")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-
-            if let pct = stats.percentageChange {
-                let changeColor: Color = abs(pct) > 20 ? .red : .green
-
-                HStack(spacing: 4) {
-                    Text(formattedPercentage(pct))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(changeColor)
-
-                    Button(action: { showingChangeInfo.toggle() }) {
-                        Image(systemName: "questionmark.circle")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary.opacity(0.6))
-                    }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showingChangeInfo, arrowEdge: .bottom) {
-                        Text("This shows how your activity changed compared to the previous period. Many users aim to keep increases within 20% to gradually adapt to workload changes and reduce the risk of repetitive strain.")
-                            .font(.system(size: 12))
-                            .foregroundColor(.primary)
-                            .frame(width: 240)
-                            .padding(12)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 12))
-    }
-
-    private func formattedTotal(_ value: Double) -> String {
-        if value >= 1000 {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.maximumFractionDigits = 0
-            return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
-        }
-        switch viewModel.selectedMetric {
-        case .keys, .clicks:
-            return String(format: "%.0f", value)
-        case .scroll, .mouseDistance, .aggregate:
-            return String(format: "%.1f", value)
-        }
-    }
-
-    private func formattedPercentage(_ pct: Double) -> String {
-        let sign = pct > 0 ? "+" : ""
-        return "\(sign)\(String(format: "%.0f", pct))%"
     }
 }

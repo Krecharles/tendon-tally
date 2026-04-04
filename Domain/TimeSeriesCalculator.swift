@@ -32,7 +32,7 @@ struct TimeSeriesCalculator {
         let calendar = Calendar.current
         
         // Determine grouping interval based on time frame
-        // Always use 1-hour intervals for today view, daily for weeks, 2-day for months
+        // Use hourly buckets for day view, daily buckets for week/month, weekly buckets for year.
         let (component, value): (Calendar.Component, Int)
         switch timeFrame {
         case .today:
@@ -47,6 +47,10 @@ struct TimeSeriesCalculator {
             // ~30 days = daily intervals (one bar per day)
             component = .day
             value = 1
+        case .lastYear:
+            // ~365 days = weekly intervals (one bar per week)
+            component = .weekOfYear
+            value = 1
         }
         
         // Create time buckets - for current period (offset 0), include current time
@@ -55,12 +59,17 @@ struct TimeSeriesCalculator {
         
         // Round start date down to the interval boundary
         let roundedStartDate: Date
-        if component == .hour {
+        switch component {
+        case .hour:
             let hour = calendar.component(.hour, from: startDate)
             let roundedHour = (hour / value) * value
             roundedStartDate = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: startDate) ?? startDate
-        } else {
+        case .day:
             roundedStartDate = calendar.startOfDay(for: startDate)
+        case .weekOfYear:
+            roundedStartDate = calendar.dateInterval(of: .weekOfYear, for: startDate)?.start ?? calendar.startOfDay(for: startDate)
+        default:
+            roundedStartDate = startDate
         }
         
         // Generate ALL buckets in the range to ensure no gaps
@@ -70,16 +79,17 @@ struct TimeSeriesCalculator {
         // Determine the current/incomplete bucket for offset 0
         let currentBucketKey: Date?
         if offset == 0 {
-            if component == .hour {
+            switch component {
+            case .hour:
                 let hour = calendar.component(.hour, from: now)
                 let roundedHour = (hour / value) * value
                 currentBucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: now) ?? now
-            } else {
-                // For days: calculate days since rounded start and round
-                let daysSinceStart = calendar.dateComponents([.day], from: roundedStartDate, to: now).day ?? 0
-                let roundedDays = (daysSinceStart / value) * value
-                let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: roundedStartDate) ?? now
-                currentBucketKey = calendar.startOfDay(for: roundedDate)
+            case .day:
+                currentBucketKey = calendar.startOfDay(for: now)
+            case .weekOfYear:
+                currentBucketKey = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
+            default:
+                currentBucketKey = now
             }
         } else {
             currentBucketKey = nil
@@ -88,17 +98,18 @@ struct TimeSeriesCalculator {
         // Generate all buckets from start to end
         while currentBucket <= effectiveEndDate {
             let bucketKey: Date
-            if component == .hour {
+            switch component {
+            case .hour:
                 // Round down to the hour boundary
                 let hour = calendar.component(.hour, from: currentBucket)
                 let roundedHour = (hour / value) * value
                 bucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: currentBucket) ?? currentBucket
-            } else {
-                // For days: calculate days since start and round
-                let daysSinceStart = calendar.dateComponents([.day], from: roundedStartDate, to: currentBucket).day ?? 0
-                let roundedDays = (daysSinceStart / value) * value
-                let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: roundedStartDate) ?? currentBucket
-                bucketKey = calendar.startOfDay(for: roundedDate)
+            case .day:
+                bucketKey = calendar.startOfDay(for: currentBucket)
+            case .weekOfYear:
+                bucketKey = calendar.dateInterval(of: .weekOfYear, for: currentBucket)?.start ?? calendar.startOfDay(for: currentBucket)
+            default:
+                bucketKey = currentBucket
             }
             
             // Mark as partial if this is the current incomplete bucket
@@ -148,16 +159,17 @@ struct TimeSeriesCalculator {
                 let timeForBucket = isCurrentSample ? now : sample.start
                 
                 let bucketKey: Date
-                if component == .hour {
+                switch component {
+                case .hour:
                     let hour = calendar.component(.hour, from: timeForBucket)
                     let roundedHour = (hour / value) * value
                     bucketKey = calendar.date(bySettingHour: roundedHour, minute: 0, second: 0, of: timeForBucket) ?? timeForBucket
-                } else {
-                    // For days: calculate days since start and round
-                    let daysSinceStart = calendar.dateComponents([.day], from: roundedStartDate, to: timeForBucket).day ?? 0
-                    let roundedDays = (daysSinceStart / value) * value
-                    let roundedDate = calendar.date(byAdding: .day, value: roundedDays, to: roundedStartDate) ?? timeForBucket
-                    bucketKey = calendar.startOfDay(for: roundedDate)
+                case .day:
+                    bucketKey = calendar.startOfDay(for: timeForBucket)
+                case .weekOfYear:
+                    bucketKey = calendar.dateInterval(of: .weekOfYear, for: timeForBucket)?.start ?? calendar.startOfDay(for: timeForBucket)
+                default:
+                    bucketKey = timeForBucket
                 }
                 
                 if var bucket = buckets[bucketKey] {
