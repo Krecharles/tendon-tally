@@ -186,6 +186,7 @@ struct BarChartView: View {
             }
         }
         .chartLegend(.hidden)
+        .chartXScale(range: .plotDimension(startPadding: 8, endPadding: 12))
         .chartXAxis {
             AxisMarks(values: .stride(by: strideComponent, count: strideCount)) { value in
                 AxisGridLine()
@@ -195,7 +196,7 @@ struct BarChartView: View {
                         Text(formatHourLabel(date))
                             .font(.caption2)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.5)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                 }
             }
@@ -282,6 +283,8 @@ struct BarChartView: View {
             return .hour
         case .lastWeek, .lastMonth:
             return .day
+        case .lastYear:
+            return .month
         }
     }
 
@@ -291,6 +294,8 @@ struct BarChartView: View {
             return .hour
         case .lastWeek, .lastMonth:
             return .day
+        case .lastYear:
+            return .month
         }
     }
 
@@ -302,6 +307,8 @@ struct BarChartView: View {
             return 1
         case .lastMonth:
             return 5
+        case .lastYear:
+            return 1
         }
     }
 
@@ -314,6 +321,10 @@ struct BarChartView: View {
         case .lastWeek, .lastMonth:
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
+        case .lastYear:
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM yy"
             return formatter.string(from: date)
         }
     }
