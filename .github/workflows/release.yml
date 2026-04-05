@@ -14,14 +14,16 @@ concurrency:
 
 jobs:
   publish-release:
-    runs-on:
-      - self-hosted
-      - macOS
-      - tendon-tally-release
+    runs-on: macos-15
 
     env:
       SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
       NOTARY_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+      P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       PROJECT_FILE: TendonTally/TendonTally.xcodeproj/project.pbxproj
       XCODEPROJ_PATH: TendonTally/TendonTally.xcodeproj
       SCHEME: TendonTally
@@ -34,14 +36,55 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${SIGN_IDENTITY}" ]]; then
-            echo "Missing required secret: SIGN_IDENTITY"
-            exit 1
-          fi
-          if [[ -z "${NOTARY_PROFILE}" ]]; then
-            echo "Missing required secret: NOTARY_PROFILE"
-            exit 1
-          fi
+          REQUIRED_VARS=(
+            "SIGN_IDENTITY"
+            "NOTARY_PROFILE"
+            "BUILD_CERTIFICATE_BASE64"
+            "P12_PASSWORD"
+            "APPLE_ID"
+            "APPLE_APP_SPECIFIC_PASSWORD"
+            "APPLE_TEAM_ID"
+          )
+          for NAME in "${REQUIRED_VARS[@]}"; do
+            if [[ -z "${!NAME}" ]]; then
+              echo "Missing required secret: ${NAME}"
+              exit 1
+            fi
+          done
+
+      - name: Prepare signing keychain
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
+          CERT_PATH="${RUNNER_TEMP}/build_certificate.p12"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+
+          printf '%s' "${BUILD_CERTIFICATE_BASE64}" | base64 -D > "${CERT_PATH}"
+
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security list-keychains -d user -s "${KEYCHAIN_PATH}"
+          security default-keychain -d user -s "${KEYCHAIN_PATH}"
+
+          security import "${CERT_PATH}" \
+            -k "${KEYCHAIN_PATH}" \
+            -P "${P12_PASSWORD}" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security \
+            -T /usr/bin/xcodebuild
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security find-identity -v -p codesigning "${KEYCHAIN_PATH}"
+
+          xcrun notarytool store-credentials "${NOTARY_PROFILE}" \
+            --apple-id "${APPLE_ID}" \
+            --team-id "${APPLE_TEAM_ID}" \
+            --password "${APPLE_APP_SPECIFIC_PASSWORD}" \
+            --keychain "${KEYCHAIN_PATH}"
+
+          echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "${GITHUB_ENV}"
 
       - name: Derive release metadata
         id: meta
@@ -56,14 +99,9 @@ jobs:
 
           VERSION="${TAG#v}"
           MARKETING_VERSION="$(grep -E 'MARKETING_VERSION = ' "${PROJECT_FILE}" | head -n 1 | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/')"
-          DEVELOPMENT_TEAM="$(grep -E 'DEVELOPMENT_TEAM = ' "${PROJECT_FILE}" | head -n 1 | sed -E 's/.*DEVELOPMENT_TEAM = ([^;]+);/\1/')"
 
           if [[ -z "${MARKETING_VERSION}" ]]; then
             echo "Could not read MARKETING_VERSION from ${PROJECT_FILE}"
-            exit 1
-          fi
-          if [[ -z "${DEVELOPMENT_TEAM}" ]]; then
-            echo "Could not read DEVELOPMENT_TEAM from ${PROJECT_FILE}"
             exit 1
           fi
 
@@ -74,7 +112,6 @@ jobs:
 
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "development_team=${DEVELOPMENT_TEAM}" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare directories
         shell: bash
@@ -96,7 +133,8 @@ jobs:
             -archivePath "${ARCHIVE_PATH}" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="${SIGN_IDENTITY}" \
-            DEVELOPMENT_TEAM="${{ steps.meta.outputs.development_team }}" \
+            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+            OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             clean
 
           APP_PATH="${ARCHIVE_PATH}/Products/Applications/TendonTally.app"
@@ -143,3 +181,13 @@ jobs:
             release-output/TendonTally.dmg
             release-output/TendonTally-${{ steps.meta.outputs.tag }}.dmg
             release-output/SHA256SUMS.txt
+
+      - name: Cleanup keychain
+        if: always()
+        shell: bash
+        run: |
+          set -eo pipefail
+          if [[ -n "${KEYCHAIN_PATH:-}" ]]; then
+            security delete-keychain "${KEYCHAIN_PATH}" || true
+          fi
+          rm -f "${RUNNER_TEMP}/build_certificate.p12"

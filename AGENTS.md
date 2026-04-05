@@ -36,11 +36,15 @@ swift test         # Run tests
   - tag version must equal Xcode `MARKETING_VERSION`
   - archive build must succeed
   - DMG sign/notarize/staple/validate must succeed
+- Workflow runs on GitHub-hosted `macos-15` (public repo standard runner)
 - Required repo secrets for release workflow:
   - `SIGN_IDENTITY` (Developer ID Application identity string)
   - `NOTARY_PROFILE` (notarytool keychain profile name, e.g. `TENDON_TALLY_NOTARY`)
-- Self-hosted runner labels expected by workflow:
-  - `self-hosted`, `macOS`, `tendon-tally-release`
+  - `BUILD_CERTIFICATE_BASE64` (base64-encoded `.p12` Developer ID cert export)
+  - `P12_PASSWORD` (password used for `.p12` export)
+  - `APPLE_ID` (Apple ID email for notarization)
+  - `APPLE_APP_SPECIFIC_PASSWORD` (Apple app-specific password for notarization)
+  - `APPLE_TEAM_ID` (Apple Developer team ID)
 
 Local manual packaging (fallback):
 - Build unsigned DMG with `./make-dmg.sh v1` (replace `v1` with release label)
