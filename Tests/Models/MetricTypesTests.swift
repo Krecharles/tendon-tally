@@ -78,6 +78,132 @@ final class MetricTypesTests: XCTestCase {
         )
     }
 
+    // MARK: - HistorySelection + Aggregation Policy
+
+    func testHistorySelectionDefaultIsPresetDay() {
+        let now = Date()
+        let selection = HistorySelection.default(now: now)
+        XCTAssertEqual(selection.mode, .preset)
+        XCTAssertEqual(selection.preset, .day)
+        XCTAssertEqual(selection.offset, 0)
+        XCTAssertNil(selection.manualAggregation)
+    }
+
+    func testHistorySelectionNormalizationClampsCustomRangeTo365Days() {
+        let calendar = Calendar.current
+        let now = Date()
+        let end = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -500, to: end)!
+
+        var selection = HistorySelection.default(now: now)
+        selection.mode = .custom
+        selection.customStartDate = start
+        selection.customEndDate = end
+
+        let normalized = selection.normalized(now: now)
+        XCTAssertEqual(normalized.customSpanDays, 365)
+    }
+
+    func testHistoryAggregationPolicyPresetYearDefaultsToWeek() {
+        var selection = HistorySelection.default()
+        selection.mode = .preset
+        selection.preset = .year
+
+        let allowed = HistoryAggregationPolicy.allowedGranularities(for: selection)
+        XCTAssertEqual(allowed, [.week])
+        XCTAssertEqual(HistoryAggregationPolicy.autoGranularity(for: selection), .week)
+    }
+
+    func testHistoryAggregationPolicyPresetDayDefaultsToHour() {
+        var selection = HistorySelection.default()
+        selection.mode = .preset
+        selection.preset = .day
+
+        XCTAssertEqual(HistoryAggregationPolicy.autoGranularity(for: selection), .hour)
+    }
+
+    func testHistoryAggregationPolicyCustom30DaysDefaultsToDay() {
+        let calendar = Calendar.current
+        let now = Date()
+        let end = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -29, to: end)! // 30 days inclusive
+
+        var selection = HistorySelection.default(now: now)
+        selection.mode = .custom
+        selection.customStartDate = start
+        selection.customEndDate = end
+
+        let allowed = HistoryAggregationPolicy.allowedGranularities(for: selection, now: now)
+        XCTAssertEqual(allowed, [.day])
+        XCTAssertEqual(HistoryAggregationPolicy.autoGranularity(for: selection, now: now), .day)
+    }
+
+    func testHistoryAggregationPolicySwitchesToWeekOverHundredBars() {
+        let calendar = Calendar.current
+        let now = Date()
+        let end = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -100, to: end)! // 101 days inclusive
+
+        var selection = HistorySelection.default(now: now)
+        selection.mode = .custom
+        selection.customStartDate = start
+        selection.customEndDate = end
+
+        XCTAssertEqual(HistoryAggregationPolicy.autoGranularity(for: selection, now: now), .week)
+    }
+
+    func testHistoryAggregationPolicyStaysWeeklyWhenWeekBarsAreUnderHundred() {
+        let calendar = Calendar.current
+        let now = Date()
+        let end = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -209, to: end)! // 210 days inclusive (~30 weeks)
+
+        var selection = HistorySelection.default(now: now)
+        selection.mode = .custom
+        selection.customStartDate = start
+        selection.customEndDate = end
+
+        XCTAssertEqual(HistoryAggregationPolicy.autoGranularity(for: selection, now: now), .week)
+    }
+
+    func testHistoryResolvedGranularityIgnoresManualSelectionAndUsesAuto() {
+        var selection = HistorySelection.default()
+        selection.mode = .preset
+        selection.preset = .week
+        selection.manualAggregation = .month
+
+        let resolved = HistoryAggregationPolicy.resolvedGranularity(for: selection)
+        XCTAssertEqual(resolved, .day)
+    }
+
+    func testHistorySelectionPresetDayOffsetZeroUsesTodaySoFar() {
+        let calendar = Calendar.current
+        let now = Date()
+        var selection = HistorySelection.default(now: now)
+        selection.mode = .preset
+        selection.preset = .day
+        selection.offset = 0
+
+        let interval = selection.dateInterval(now: now)
+        XCTAssertEqual(interval.start, calendar.startOfDay(for: now))
+        XCTAssertLessThan(abs(interval.end.timeIntervalSince(now)), 1.0)
+    }
+
+    func testHistorySelectionCustomIncludingTodayCanNavigateForwardFromPastOffset() {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -7, to: today)!
+
+        var selection = HistorySelection.default(now: now)
+        selection.mode = .custom
+        selection.customStartDate = start
+        selection.customEndDate = today
+        selection.offset = -1
+
+        XCTAssertTrue(selection.canNavigateForward(now: now))
+    }
+
     // MARK: - TotalConfig
 
     func testTotalConfigDefaultWeights() {

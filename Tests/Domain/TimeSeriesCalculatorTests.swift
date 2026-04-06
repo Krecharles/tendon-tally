@@ -190,6 +190,89 @@ final class TimeSeriesCalculatorTests: XCTestCase {
         }
     }
 
+    // MARK: - New Interval + Granularity API
+
+    func testIntervalApiWeeklyBucketsAlignToIsoWeekStart() {
+        let now = Date()
+        let start = calendar.date(byAdding: .day, value: -60, to: now)!
+        let interval = DateInterval(start: start, end: now)
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: [],
+            currentSample: nil,
+            dateInterval: interval,
+            granularity: .week,
+            includeCurrentSample: false,
+            now: now
+        )
+
+        var isoCalendar = Calendar(identifier: .iso8601)
+        isoCalendar.timeZone = TimeZone.current
+        for point in result {
+            let weekStart = isoCalendar.dateInterval(of: .weekOfYear, for: point.time)?.start ?? point.time
+            XCTAssertEqual(point.time, weekStart)
+        }
+    }
+
+    func testIntervalApiMonthlyBucketsAlignToMonthStart() {
+        let now = Date()
+        let start = calendar.date(byAdding: .day, value: -150, to: now)!
+        let interval = DateInterval(start: start, end: now)
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: [],
+            currentSample: nil,
+            dateInterval: interval,
+            granularity: .month,
+            includeCurrentSample: false,
+            now: now
+        )
+
+        XCTAssertFalse(result.isEmpty)
+        for point in result {
+            let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: point.time)) ?? point.time
+            XCTAssertEqual(point.time, monthStart)
+        }
+    }
+
+    func testIntervalApiMarksCurrentBucketPartialWhenNowInInterval() {
+        let now = Date()
+        let start = calendar.date(byAdding: .day, value: -2, to: now)!
+        let interval = DateInterval(start: start, end: now)
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: [],
+            currentSample: nil,
+            dateInterval: interval,
+            granularity: .day,
+            includeCurrentSample: false,
+            now: now
+        )
+
+        let todayBucket = result.first { calendar.isDate($0.time, inSameDayAs: now) }
+        XCTAssertNotNil(todayBucket)
+        XCTAssertTrue(todayBucket?.isPartial ?? false)
+    }
+
+    func testIntervalApiSingleDayRangeProducesSingleDailyBucket() {
+        let now = Date()
+        let start = calendar.startOfDay(for: now)
+        let endExclusive = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let interval = DateInterval(start: start, end: endExclusive)
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: [],
+            currentSample: nil,
+            dateInterval: interval,
+            granularity: .day,
+            includeCurrentSample: true,
+            now: now
+        )
+
+        XCTAssertEqual(result.count, 1)
+        XCTAssertTrue(calendar.isDate(result[0].time, inSameDayAs: now))
+    }
+
     // MARK: - All Metrics Tracked
 
     func testAllMetricsAreAggregated() {

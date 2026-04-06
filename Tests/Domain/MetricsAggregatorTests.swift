@@ -422,4 +422,26 @@ final class MetricsAggregatorTests: XCTestCase {
         XCTAssertNil(AppPreferences.shared.breakRemindersSnoozedUntil)
         XCTAssertFalse(viewModel.breakRemindersAreSnoozed)
     }
+
+    @MainActor
+    func testHistoryCustomActivationAndRangeUpdateDoNotCrash() {
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(eventTapManager: eventTap, persistence: persistence)
+        let viewModel = MetricsViewModel(
+            aggregator: aggregator,
+            breakPillController: BreakPillController()
+        )
+
+        viewModel.activateCustomRange()
+        XCTAssertEqual(viewModel.historySelection.mode, .custom)
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.date(byAdding: .day, value: -10, to: today) ?? today
+        viewModel.updateCustomRange(start: start, end: today)
+
+        XCTAssertEqual(viewModel.historySelection.mode, .custom)
+        XCTAssertEqual(viewModel.historySelection.customSpanDays, 11)
+    }
 }

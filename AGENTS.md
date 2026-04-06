@@ -10,6 +10,7 @@ Menu bar app tracking keyboard/mouse activity in 1-minute rolling windows. Swift
 - **Domain/** - EventTapManager (event tap), MetricsAggregator (1-min windows), PersistenceController (JSON storage), TimeSeriesCalculator, break reminder evaluation/controllers, settings/state services
 - **Domain/Protocols/** - EventTapping, MetricsPersisting, MetricsAggregating (for testability/DI)
 - **Models/** - UsageSample, MetricTypes, RawActivitySnapshot, Breaks/KUI config models
+- **History model (in Models/MetricTypes.swift)** - `HistorySelection` + `HistoryPreset` + `AggregationGranularity` now drive History ranges/aggregation (preset + custom ranges, auto/manual granularity policy)
 - **UI/** - MetricsViewModel (MVVM), FullDashboardView (shell with sidebar), DashboardView (popover), SettingsView
 - **UI/Components/** - Reusable views: MetricTile, PermissionBanner, SidebarButton, MetricPill, KUIWeightRow
 - **UI/Tabs/** - TodayTabView, HistoryTabView, KUITabView, BreaksTabView, PermissionsTabView
@@ -70,6 +71,7 @@ Local manual packaging (fallback):
 - Protocols (EventTapping, MetricsPersisting, MetricsAggregating) enable dependency injection
 - MetricsAggregator accepts dependencies via init for testability
 - AppPreferences centralizes dashboard/break state in UserDefaults; launch-at-login and dock visibility are applied through SettingsManager
+- History dashboard now uses `AppPreferences.historySelection` (JSON) with one-release migration fallback from legacy `selectedTimeFrame` + `historyMonthAggregation`
 
 ## Note on Prompts
 
@@ -81,3 +83,4 @@ The user often dictates prompts via speech-to-text. If something seems off, try 
 - `Domain/MetricsAggregator.swift` - Core windowing logic with DI support
 - `UI/MetricsViewModel.swift` - View model bridging domain to UI
 - `Domain/TimeSeriesCalculator.swift` - Complex time bucketing for charts
+- `UI/Tabs/HistoryTabView.swift` - History range/aggregation controls (preset + custom + auto/manual aggregation)

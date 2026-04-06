@@ -12,25 +12,28 @@ final class MetricsViewModel: ObservableObject {
     }
 
     private struct TimeSeriesCacheKey: Hashable {
-        let timeFrame: TimeFrame
-        let offset: Int
+        let selection: HistorySelection
+        let granularity: AggregationGranularity
+    }
+
+    private struct IntervalSeriesCacheKey: Hashable {
+        let start: Date
+        let end: Date
+        let granularity: AggregationGranularity
+        let includeCurrentSample: Bool
     }
 
     private struct AggregatedMetricsCacheKey: Hashable {
-        let timeFrame: TimeFrame
-        let offset: Int
+        let start: Date
+        let end: Date
+        let includeCurrentSample: Bool
     }
 
     @Published var currentSample: UsageSample
     @Published var recentHistory: [UsageSample] = []
     @Published var todayTotals: UsageSample
     @Published var permissionIssueMessage: String?
-    @Published var selectedTimeFrame: TimeFrame {
-        didSet {
-            AppPreferences.shared.selectedTimeFrame = selectedTimeFrame
-        }
-    }
-    @Published var timeFrameOffset: Int = 0
+    @Published private(set) var historySelection: HistorySelection
     @Published var selectedMetric: MetricType {
         didSet {
             AppPreferences.shared.selectedMetric = selectedMetric
@@ -59,6 +62,7 @@ final class MetricsViewModel: ObservableObject {
     private var breakResetWarningCountdown: Int = 0
     private var breakRemindersSnoozedUntil: Date?
     private var timeSeriesCache: [TimeSeriesCacheKey: [TimeSeriesDataPoint]] = [:]
+    private var intervalSeriesCache: [IntervalSeriesCacheKey: [TimeSeriesDataPoint]] = [:]
     private var aggregatedMetricsCache: [AggregatedMetricsCacheKey: AggregatedMetrics] = [:]
 
     init(
@@ -74,7 +78,7 @@ final class MetricsViewModel: ObservableObject {
         )
 
         let prefs = AppPreferences.shared
-        self.selectedTimeFrame = prefs.selectedTimeFrame
+        self.historySelection = prefs.historySelection.normalized()
         self.selectedMetric = prefs.selectedMetric
         self.totalConfig = prefs.totalConfig
         self.advancedTotalCalculationEnabled = prefs.advancedTotalCalculationEnabled
@@ -192,52 +196,90 @@ final class MetricsViewModel: ObservableObject {
         )
     }
 
-    func aggregatedMetrics(for timeFrame: TimeFrame, offset: Int) -> AggregatedMetrics {
-        let cacheKey = AggregatedMetricsCacheKey(timeFrame: timeFrame, offset: offset)
-        if let cached = aggregatedMetricsCache[cacheKey] {
-            return cached
-        }
+    var resolvedHistoryAggregation: AggregationGranularity {
+        HistoryAggregationPolicy.resolvedGranularity(for: historySelection, now: Date())
+    }
 
-        let (startDate, endDate) = timeFrame.dateRange(offset: offset)
+    var allowedHistoryAggregations: [AggregationGranularity] {
+        HistoryAggregationPolicy.allowedGranularities(for: historySelection, now: Date())
+    }
+
+    var historyUsesAutoAggregation: Bool {
+        historySelection.manualAggregation == nil
+    }
+
+    var historyDateInterval: DateInterval {
+        historySelection.normalized().dateInterval(now: Date())
+    }
+
+    var canShiftHistoryForward: Bool {
+        historySelection.canNavigateForward(now: Date())
+    }
+
+    func selectHistoryPreset(_ preset: HistoryPreset) {
+        var next = historySelection
+        next.mode = .preset
+        next.preset = preset
+        next.offset = 0
+        applyHistorySelection(next)
+    }
+
+    func activateCustomRange() {
+        var next = historySelection
+        next.mode = .custom
+        next.offset = 0
+        applyHistorySelection(next)
+    }
+
+    func updateCustomRange(start: Date, end: Date) {
+        var next = historySelection
+        next.mode = .custom
+        next.customStartDate = start
+        next.customEndDate = end
+        next.offset = 0
+        applyHistorySelection(next)
+    }
+
+    func setHistoryAggregation(_ manualAggregation: AggregationGranularity?) {
+        var next = historySelection
+        next.manualAggregation = manualAggregation
+        applyHistorySelection(next)
+    }
+
+    func shiftHistoryBackward() {
+        var next = historySelection
+        next.offset -= 1
+        applyHistorySelection(next)
+    }
+
+    func shiftHistoryForward() {
+        guard canShiftHistoryForward else { return }
+        var next = historySelection
+        next.offset += 1
+        applyHistorySelection(next)
+    }
+
+    func resetHistoryToToday() {
+        applyHistorySelection(HistorySelection.default())
+    }
+
+    func aggregatedMetrics(for selection: HistorySelection) -> AggregatedMetrics {
         let now = Date()
+        let normalized = selection.normalized(now: now)
+        let interval = normalized.dateInterval(now: now)
+        let includeCurrent = now >= interval.start && now <= interval.end
+        return aggregatedMetrics(for: interval, includeCurrentSample: includeCurrent, now: now)
+    }
 
-        let allSamples: [UsageSample]
-        if offset == 0 {
-            allSamples = aggregator.history + [aggregator.currentSample]
-        } else {
-            allSamples = aggregator.history
-        }
-
-        var totalKeys = 0
-        var totalClicks = 0
-        var totalScrollTicks = 0
-        var totalMouseDistance = 0.0
-
-        for sample in allSamples {
-            let sampleOverlaps: Bool
-            if offset == 0 {
-                let effectiveEnd = max(endDate, now)
-                sampleOverlaps = sample.end >= startDate && sample.start <= effectiveEnd
-            } else {
-                sampleOverlaps = sample.start >= startDate && sample.end <= endDate
-            }
-
-            if sampleOverlaps {
-                totalKeys += sample.keyPressCount
-                totalClicks += sample.mouseClickCount
-                totalScrollTicks += sample.scrollTicks
-                totalMouseDistance += sample.mouseDistance
-            }
-        }
-
-        let result = AggregatedMetrics(
-            keyPressCount: totalKeys,
-            mouseClickCount: totalClicks,
-            scrollTicks: totalScrollTicks,
-            mouseDistance: totalMouseDistance
+    func aggregatedMetrics(for timeFrame: TimeFrame, offset: Int) -> AggregatedMetrics {
+        let now = Date()
+        let range = timeFrame.dateRange(offset: offset)
+        let includeCurrent = offset == 0
+        return aggregatedMetrics(
+            for: DateInterval(start: range.start, end: range.end),
+            includeCurrentSample: includeCurrent,
+            now: now
         )
-        aggregatedMetricsCache[cacheKey] = result
-        return result
     }
 
     func reloadHistory() {
@@ -322,65 +364,100 @@ final class MetricsViewModel: ObservableObject {
         return "Copied \(day.rawValue)"
     }
 
-    func timeSeriesData(for timeFrame: TimeFrame, offset: Int) -> [TimeSeriesDataPoint] {
-        let cacheKey = TimeSeriesCacheKey(timeFrame: timeFrame, offset: offset)
+    func timeSeriesData(for selection: HistorySelection) -> [TimeSeriesDataPoint] {
+        let now = Date()
+        let normalized = selection.normalized(now: now)
+        let granularity = HistoryAggregationPolicy.resolvedGranularity(for: normalized, now: now)
+        let cacheKey = TimeSeriesCacheKey(selection: normalized, granularity: granularity)
         if let cached = timeSeriesCache[cacheKey] {
             return cached
         }
 
-        let result = TimeSeriesCalculator.calculateTimeSeries(
-            samples: aggregator.history,
-            currentSample: offset == 0 ? aggregator.currentSample : nil,
-            timeFrame: timeFrame,
-            offset: offset
+        let interval = normalized.dateInterval(now: now)
+        let includeCurrent = now >= interval.start && now <= interval.end
+        let result = timeSeriesData(
+            for: interval,
+            granularity: granularity,
+            includeCurrentSample: includeCurrent,
+            now: now
         )
         timeSeriesCache[cacheKey] = result
         return result
     }
 
-    func weeklyOverlayDataPoints(
-        for timeFrame: TimeFrame,
-        monthAggregation: MonthAggregation,
-        offset: Int
-    ) -> [TimeSeriesDataPoint] {
-        let visible = timeSeriesData(for: timeFrame, offset: offset)
-        guard timeFrame == .lastMonth, monthAggregation == .week else {
-            return visible
+    /// Legacy adapter for callers still using TimeFrame/offset.
+    func timeSeriesData(for timeFrame: TimeFrame, offset: Int) -> [TimeSeriesDataPoint] {
+        var selection = HistorySelection.default()
+        selection.mode = .preset
+        selection.offset = offset
+        switch timeFrame {
+        case .today:
+            selection.preset = .day
+        case .lastWeek:
+            selection.preset = .week
+        case .lastMonth:
+            selection.preset = .month
+        case .lastYear:
+            selection.preset = .year
         }
-        guard let firstVisible = visible.first?.time,
-              let lastVisible = visible.last?.time else {
-            return visible
-        }
-
-        let rangeStart = isoWeekStart(for: firstVisible)
-        var isoCalendar = Calendar(identifier: .iso8601)
-        isoCalendar.timeZone = TimeZone.current
-        let trailingWeekStart = isoWeekStart(for: lastVisible)
-        let rangeEndExclusive = isoCalendar.date(byAdding: .day, value: 7, to: trailingWeekStart) ?? trailingWeekStart
-
-        var mergedByDay: [Date: TimeSeriesDataPoint] = [:]
-        let calendar = Calendar.current
-
-        let previousWindow = timeSeriesData(for: .lastMonth, offset: offset - 1)
-        let nextWindow = offset < 0 ? timeSeriesData(for: .lastMonth, offset: offset + 1) : []
-        let mergeOrder = [previousWindow, nextWindow, visible]
-
-        for points in mergeOrder {
-            for point in points {
-                let day = calendar.startOfDay(for: point.time)
-                guard day >= rangeStart, day < rangeEndExclusive else { continue }
-                mergedByDay[day] = point
-            }
-        }
-
-        return mergedByDay
-            .keys
-            .sorted()
-            .compactMap { mergedByDay[$0] }
+        return timeSeriesData(for: selection)
     }
 
+    func overlaySourceDataPoints(for selection: HistorySelection) -> [TimeSeriesDataPoint] {
+        let now = Date()
+        let normalized = selection.normalized(now: now)
+        let baseGranularity = HistoryAggregationPolicy.resolvedGranularity(for: normalized, now: now)
+        guard let overlayGranularity = baseGranularity.nextCoarser else {
+            return []
+        }
+
+        let visible = timeSeriesData(for: normalized)
+        guard let firstVisible = visible.first?.time,
+              let lastVisible = visible.last?.time else {
+            return []
+        }
+
+        let calendar = Calendar.current
+        let overlayStart = overlayGranularity.alignedStart(for: firstVisible, calendar: calendar)
+        let trailingOverlayStart = overlayGranularity.alignedStart(for: lastVisible, calendar: calendar)
+        let overlayEndExclusive = overlayGranularity.addingOneStep(to: trailingOverlayStart, calendar: calendar)
+        let interval = DateInterval(start: overlayStart, end: overlayEndExclusive)
+        let includeCurrent = now >= interval.start && now <= interval.end
+
+        return timeSeriesData(
+            for: interval,
+            granularity: baseGranularity,
+            includeCurrentSample: includeCurrent,
+            now: now
+        )
+    }
+
+    func hasAnyHistoryData() -> Bool {
+        let allData = timeSeriesData(for: historySelection)
+        return allData.contains {
+            $0.keyPressCount > 0 ||
+            $0.mouseClickCount > 0 ||
+            $0.scrollTicks > 0 ||
+            $0.mouseDistance > 0
+        }
+    }
+
+    /// Legacy adapter for callers still using TimeFrame.
     func hasAnyHistoryData(for timeFrame: TimeFrame) -> Bool {
-        let allData = timeSeriesData(for: timeFrame, offset: 0)
+        var selection = HistorySelection.default()
+        selection.mode = .preset
+        selection.offset = 0
+        switch timeFrame {
+        case .today:
+            selection.preset = .day
+        case .lastWeek:
+            selection.preset = .week
+        case .lastMonth:
+            selection.preset = .month
+        case .lastYear:
+            selection.preset = .year
+        }
+        let allData = timeSeriesData(for: selection)
         return allData.contains {
             $0.keyPressCount > 0 ||
             $0.mouseClickCount > 0 ||
@@ -391,14 +468,87 @@ final class MetricsViewModel: ObservableObject {
 
     private func invalidateHistoryDerivedCaches() {
         timeSeriesCache.removeAll(keepingCapacity: true)
+        intervalSeriesCache.removeAll(keepingCapacity: true)
         aggregatedMetricsCache.removeAll(keepingCapacity: true)
     }
 
-    private func isoWeekStart(for date: Date) -> Date {
-        var isoCalendar = Calendar(identifier: .iso8601)
-        isoCalendar.timeZone = TimeZone.current
-        let normalizedDate = Calendar.current.startOfDay(for: date)
-        return isoCalendar.dateInterval(of: .weekOfYear, for: normalizedDate)?.start ?? normalizedDate
+    private func applyHistorySelection(_ selection: HistorySelection) {
+        let normalized = selection.normalized()
+        guard normalized != historySelection else { return }
+        historySelection = normalized
+        AppPreferences.shared.historySelection = normalized
+    }
+
+    private func timeSeriesData(
+        for interval: DateInterval,
+        granularity: AggregationGranularity,
+        includeCurrentSample: Bool,
+        now: Date
+    ) -> [TimeSeriesDataPoint] {
+        let key = IntervalSeriesCacheKey(
+            start: interval.start,
+            end: interval.end,
+            granularity: granularity,
+            includeCurrentSample: includeCurrentSample
+        )
+        if let cached = intervalSeriesCache[key] {
+            return cached
+        }
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: aggregator.history,
+            currentSample: includeCurrentSample ? aggregator.currentSample : nil,
+            dateInterval: interval,
+            granularity: granularity,
+            includeCurrentSample: includeCurrentSample,
+            now: now
+        )
+        intervalSeriesCache[key] = result
+        return result
+    }
+
+    private func aggregatedMetrics(
+        for interval: DateInterval,
+        includeCurrentSample: Bool,
+        now: Date
+    ) -> AggregatedMetrics {
+        let cacheKey = AggregatedMetricsCacheKey(
+            start: interval.start,
+            end: interval.end,
+            includeCurrentSample: includeCurrentSample
+        )
+        if let cached = aggregatedMetricsCache[cacheKey] {
+            return cached
+        }
+
+        let allSamples: [UsageSample]
+        if includeCurrentSample {
+            allSamples = aggregator.history + [aggregator.currentSample]
+        } else {
+            allSamples = aggregator.history
+        }
+
+        var totalKeys = 0
+        var totalClicks = 0
+        var totalScrollTicks = 0
+        var totalMouseDistance = 0.0
+        let effectiveEnd = includeCurrentSample ? max(interval.end, now) : interval.end
+
+        for sample in allSamples where sample.end >= interval.start && sample.start <= effectiveEnd {
+            totalKeys += sample.keyPressCount
+            totalClicks += sample.mouseClickCount
+            totalScrollTicks += sample.scrollTicks
+            totalMouseDistance += sample.mouseDistance
+        }
+
+        let result = AggregatedMetrics(
+            keyPressCount: totalKeys,
+            mouseClickCount: totalClicks,
+            scrollTicks: totalScrollTicks,
+            mouseDistance: totalMouseDistance
+        )
+        aggregatedMetricsCache[cacheKey] = result
+        return result
     }
 
     var breakCardPhase: BreakPhase {

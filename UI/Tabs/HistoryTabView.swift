@@ -2,12 +2,11 @@ import SwiftUI
 
 struct HistoryTabView: View {
     @ObservedObject var viewModel: MetricsViewModel
-    @AppStorage("historyMonthAggregation") private var monthAggregationRawValue: String = MonthAggregation.day.rawValue
 
-    private var monthAggregation: MonthAggregation {
-        get { MonthAggregation(rawValue: monthAggregationRawValue) ?? .day }
-        nonmutating set { monthAggregationRawValue = newValue.rawValue }
-    }
+    @AppStorage("historyOverlayEnabled") private var historyOverlayEnabled: Bool = true
+    @State private var showingCustomPopover = false
+    @State private var draftCustomStart = Calendar.current.startOfDay(for: Date())
+    @State private var draftCustomEnd = Calendar.current.startOfDay(for: Date())
 
     var body: some View {
         ScrollView {
@@ -16,10 +15,10 @@ struct HistoryTabView: View {
                     .padding(.bottom, 20)
 
                 HStack(spacing: 12) {
-                    timeFrameSelector
+                    rangeSelector
                     dateNavigation
-                    if viewModel.selectedTimeFrame == .lastMonth {
-                        monthAggregationSelector
+                    if shouldShowOverlayToggle {
+                        overlayToggle
                     }
                 }
                 .padding(.bottom, 12)
@@ -34,6 +33,9 @@ struct HistoryTabView: View {
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            syncCustomDraftsFromSelection()
+        }
     }
 
     private var headerSection: some View {
@@ -42,19 +44,18 @@ struct HistoryTabView: View {
             .foregroundColor(.primary)
     }
 
-    // MARK: - Time Frame Selector
+    // MARK: - Range Selector
 
-    private var timeFrameSelector: some View {
+    private var rangeSelector: some View {
         HStack(spacing: 2) {
-            ForEach(TimeFrame.allCases, id: \.self) { timeFrame in
-                let isSelected = viewModel.selectedTimeFrame == timeFrame
+            ForEach(HistoryPreset.allCases, id: \.self) { preset in
+                let isSelected = isPresetSelected(preset)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.15)) {
-                        viewModel.selectedTimeFrame = timeFrame
-                        viewModel.timeFrameOffset = 0
+                        viewModel.selectHistoryPreset(preset)
                     }
                 }) {
-                    Text(timeFrame.rawValue)
+                    Text(preset.rawValue)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
                         .foregroundColor(isSelected ? .white : .secondary)
                         .padding(.horizontal, 16)
@@ -65,6 +66,26 @@ struct HistoryTabView: View {
                         )
                 }
                 .buttonStyle(.plain)
+            }
+
+            let isCustomSelected = viewModel.historySelection.mode == .custom
+            Button(action: {
+                syncCustomDraftsFromSelection()
+                showingCustomPopover.toggle()
+            }) {
+                Text("Custom")
+                    .font(.system(size: 12, weight: isCustomSelected ? .semibold : .regular))
+                    .foregroundColor(isCustomSelected ? .white : .secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(isCustomSelected ? Color.accentColor : Color.clear)
+                    )
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showingCustomPopover, arrowEdge: .bottom) {
+                customRangePopover
             }
         }
         .padding(3)
@@ -84,7 +105,7 @@ struct HistoryTabView: View {
         HStack(spacing: 8) {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.15)) {
-                    viewModel.timeFrameOffset -= 1
+                    viewModel.shiftHistoryBackward()
                 }
             }) {
                 Image(systemName: "chevron.left")
@@ -101,62 +122,42 @@ struct HistoryTabView: View {
 
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.15)) {
-                    viewModel.timeFrameOffset += 1
-                    if viewModel.timeFrameOffset > 0 {
-                        viewModel.timeFrameOffset = 0
-                    }
+                    viewModel.shiftHistoryForward()
                 }
             }) {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(viewModel.timeFrameOffset >= 0 ? .secondary.opacity(0.3) : .secondary)
+                    .foregroundColor(viewModel.canShiftHistoryForward ? .secondary : .secondary.opacity(0.3))
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(viewModel.timeFrameOffset >= 0)
+            .disabled(!viewModel.canShiftHistoryForward)
 
-            if viewModel.timeFrameOffset != 0 {
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        viewModel.timeFrameOffset = 0
-                    }
-                }) {
-                    Text("Today")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.accentColor))
-                }
-                .buttonStyle(.plain)
-                .transition(.opacity.combined(with: .scale))
-            }
         }
     }
 
-    private var monthAggregationSelector: some View {
-        HStack(spacing: 2) {
-            ForEach(MonthAggregation.allCases, id: \.self) { aggregation in
-                let isSelected = monthAggregation == aggregation
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        monthAggregation = aggregation
-                    }
-                }) {
-                    Text(aggregation.rawValue)
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                        .foregroundColor(isSelected ? .white : .secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(isSelected ? Color.accentColor : Color.clear)
-                        )
-                }
-                .buttonStyle(.plain)
+    private var overlayToggle: some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                historyOverlayEnabled.toggle()
             }
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: historyOverlayEnabled ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Overlay")
+                    .font(.system(size: 12, weight: historyOverlayEnabled ? .semibold : .regular))
+            }
+            .foregroundColor(historyOverlayEnabled ? .white : .secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(historyOverlayEnabled ? Color.accentColor : Color.clear)
+            )
         }
+        .buttonStyle(.plain)
         .padding(3)
         .background(
             RoundedRectangle(cornerRadius: 8)
@@ -168,81 +169,113 @@ struct HistoryTabView: View {
         )
     }
 
-    private var dateRangeLabelText: String {
-        let (startDate, endDate) = viewModel.selectedTimeFrame.dateRange(offset: viewModel.timeFrameOffset)
-        let calendar = Calendar.current
-        let formatter = DateFormatter()
+    private var customRangePopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Custom Range")
+                .font(.headline)
 
-        if viewModel.timeFrameOffset == 0 {
-            switch viewModel.selectedTimeFrame {
-            case .today:
-                return "Today"
-            case .lastWeek:
-                return "Last 7 days"
-            case .lastMonth:
-                return "Last 30 days"
-            case .lastYear:
-                return "Last 365 days"
-            }
-        } else {
-            switch viewModel.selectedTimeFrame {
-            case .today:
-                formatter.dateFormat = "EEEE, MMM d"
-                return formatter.string(from: startDate)
-            case .lastWeek:
-                formatter.dateFormat = "MMM d"
-                let startStr = formatter.string(from: startDate)
-                let endStr = formatter.string(from: endDate)
-                let startYear = calendar.component(.year, from: startDate)
-                let endYear = calendar.component(.year, from: endDate)
-                if startYear == endYear {
-                    return "\(startStr) \u{2013} \(endStr)"
-                } else {
-                    formatter.dateFormat = "MMM d, yyyy"
-                    let endStrWithYear = formatter.string(from: endDate)
-                    return "\(startStr) \u{2013} \(endStrWithYear)"
+            DatePicker(
+                "Start",
+                selection: $draftCustomStart,
+                in: ...Calendar.current.startOfDay(for: Date()),
+                displayedComponents: .date
+            )
+
+            DatePicker(
+                "End",
+                selection: $draftCustomEnd,
+                in: draftCustomStart...Calendar.current.startOfDay(for: Date()),
+                displayedComponents: .date
+            )
+
+            Text("Range is limited to 1–365 days.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Button("Cancel") {
+                    syncCustomDraftsFromSelection()
+                    showingCustomPopover = false
                 }
-            case .lastMonth:
-                formatter.dateFormat = "MMM d"
-                let startStr = formatter.string(from: startDate)
-                let endStr = formatter.string(from: endDate)
-                let startYear = calendar.component(.year, from: startDate)
-                let endYear = calendar.component(.year, from: endDate)
-                if startYear == endYear {
-                    return "\(startStr) \u{2013} \(endStr)"
-                } else {
-                    formatter.dateFormat = "MMM d, yyyy"
-                    let endStrWithYear = formatter.string(from: endDate)
-                    return "\(startStr) \u{2013} \(endStrWithYear)"
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button("Apply") {
+                    viewModel.updateCustomRange(start: draftCustomStart, end: draftCustomEnd)
+                    syncCustomDraftsFromSelection()
+                    showingCustomPopover = false
                 }
-            case .lastYear:
-                formatter.dateFormat = "MMM d, yyyy"
-                let startStr = formatter.string(from: startDate)
-                let endStr = formatter.string(from: endDate)
-                return "\(startStr) \u{2013} \(endStr)"
+                .keyboardShortcut(.defaultAction)
             }
         }
+        .padding(16)
+        .frame(width: 300)
+    }
+
+    private var dateRangeLabelText: String {
+        let now = Date()
+        let selection = viewModel.historySelection.normalized(now: now)
+        let interval = selection.dateInterval(now: now)
+
+        if selection.mode == .preset, selection.offset == 0 {
+            switch selection.preset {
+            case .day:
+                return "Today"
+            case .week:
+                return "Last 7 days"
+            case .month:
+                return "Last 30 days"
+            case .year:
+                return "Last 365 days"
+            }
+        }
+
+        return formatDateRange(start: interval.start, endExclusive: interval.end)
+    }
+
+    private func formatDateRange(start: Date, endExclusive: Date) -> String {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        let inclusiveEnd = endExclusive.addingTimeInterval(-1)
+
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: inclusiveEnd)
+
+        if startYear == endYear {
+            formatter.dateFormat = "MMM d"
+            return "\(formatter.string(from: start)) \u{2013} \(formatter.string(from: inclusiveEnd))"
+        }
+
+        formatter.dateFormat = "MMM d, yyyy"
+        return "\(formatter.string(from: start)) \u{2013} \(formatter.string(from: inclusiveEnd))"
+    }
+
+    private func isPresetSelected(_ preset: HistoryPreset) -> Bool {
+        let selection = viewModel.historySelection
+        return selection.mode == .preset && selection.preset == preset
+    }
+
+    private func syncCustomDraftsFromSelection() {
+        let normalized = viewModel.historySelection.normalized()
+        draftCustomStart = Calendar.current.startOfDay(for: normalized.customStartDate)
+        draftCustomEnd = Calendar.current.startOfDay(for: normalized.customEndDate)
     }
 
     // MARK: - Chart Card (chart + summary footer)
 
     private var chartCard: some View {
-        let dataPoints = viewModel.timeSeriesData(
-            for: viewModel.selectedTimeFrame,
-            offset: viewModel.timeFrameOffset
-        )
-        let weeklyAverageDataPoints = viewModel.weeklyOverlayDataPoints(
-            for: viewModel.selectedTimeFrame,
-            monthAggregation: monthAggregation,
-            offset: viewModel.timeFrameOffset
-        )
+        let selection = viewModel.historySelection
+        let dataPoints = viewModel.timeSeriesData(for: selection)
+        let shouldRenderOverlay = historyOverlayEnabled && shouldShowOverlayToggle
+        let overlayDataPoints = shouldRenderOverlay ? viewModel.overlaySourceDataPoints(for: selection) : []
 
         return BarChartView(
             dataPoints: dataPoints,
-            weeklyAverageDataPoints: weeklyAverageDataPoints,
+            overlayDataPoints: overlayDataPoints,
+            showOverlay: shouldRenderOverlay,
             selectedMetric: viewModel.selectedMetric,
-            timeFrame: viewModel.selectedTimeFrame,
-            monthAggregation: monthAggregation,
+            granularity: viewModel.resolvedHistoryAggregation,
             totalConfig: viewModel.effectiveTotalConfig,
             hasAnyData: hasAnyData
         )
@@ -254,7 +287,16 @@ struct HistoryTabView: View {
     }
 
     private var hasAnyData: Bool {
-        viewModel.hasAnyHistoryData(for: viewModel.selectedTimeFrame)
+        viewModel.hasAnyHistoryData()
+    }
+
+    private var shouldShowOverlayToggle: Bool {
+        guard let coarser = viewModel.resolvedHistoryAggregation.nextCoarser else {
+            return false
+        }
+        let points = viewModel.timeSeriesData(for: viewModel.historySelection)
+        let groupCount = Set(points.map { coarser.alignedStart(for: $0.time) }).count
+        return groupCount >= 3
     }
 
     // MARK: - Metric Filters

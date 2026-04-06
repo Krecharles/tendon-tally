@@ -1,6 +1,273 @@
 import Foundation
 
+enum HistoryPreset: String, CaseIterable, Codable, Hashable {
+    case day = "Day"
+    case week = "Week"
+    case month = "Month"
+    case year = "Year"
+
+    var rollingDays: Int {
+        switch self {
+        case .day:
+            return 1
+        case .week:
+            return 7
+        case .month:
+            return 30
+        case .year:
+            return 365
+        }
+    }
+}
+
+enum HistoryRangeMode: String, Codable, Hashable {
+    case preset
+    case custom
+}
+
+enum AggregationGranularity: String, CaseIterable, Codable, Hashable {
+    case hour = "Hour"
+    case day = "Day"
+    case week = "Week"
+    case month = "Month"
+
+    var calendarComponent: Calendar.Component {
+        switch self {
+        case .hour:
+            return .hour
+        case .day:
+            return .day
+        case .week:
+            return .weekOfYear
+        case .month:
+            return .month
+        }
+    }
+
+    var nextCoarser: AggregationGranularity? {
+        switch self {
+        case .hour:
+            return .day
+        case .day:
+            return .week
+        case .week:
+            return .month
+        case .month:
+            return nil
+        }
+    }
+
+    func alignedStart(for date: Date, calendar: Calendar = .current) -> Date {
+        switch self {
+        case .hour:
+            let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
+            return calendar.date(from: components) ?? date
+        case .day:
+            return calendar.startOfDay(for: date)
+        case .week:
+            var isoCalendar = Calendar(identifier: .iso8601)
+            isoCalendar.timeZone = calendar.timeZone
+            let normalized = calendar.startOfDay(for: date)
+            return isoCalendar.dateInterval(of: .weekOfYear, for: normalized)?.start ?? normalized
+        case .month:
+            let components = calendar.dateComponents([.year, .month], from: date)
+            return calendar.date(from: components) ?? date
+        }
+    }
+
+    func addingOneStep(to date: Date, calendar: Calendar = .current) -> Date {
+        calendar.date(byAdding: calendarComponent, value: 1, to: date) ?? date
+    }
+}
+
+struct HistorySelection: Codable, Hashable {
+    var mode: HistoryRangeMode
+    var preset: HistoryPreset
+    var customStartDate: Date
+    var customEndDate: Date
+    var offset: Int
+    var manualAggregation: AggregationGranularity?
+
+    static func `default`(now: Date = Date(), calendar: Calendar = .current) -> HistorySelection {
+        let todayStart = calendar.startOfDay(for: now)
+        return HistorySelection(
+            mode: .preset,
+            preset: .day,
+            customStartDate: todayStart,
+            customEndDate: todayStart,
+            offset: 0,
+            manualAggregation: nil
+        )
+    }
+
+    var isCustom: Bool { mode == .custom }
+
+    func normalized(now: Date = Date(), calendar: Calendar = .current) -> HistorySelection {
+        var copy = self
+        let safeNow: Date
+        if now.timeIntervalSinceReferenceDate.isFinite {
+            safeNow = now
+        } else {
+            safeNow = Date()
+        }
+        let today = calendar.startOfDay(for: safeNow)
+
+        var normalizedStart = calendar.startOfDay(for: customStartDate)
+        var normalizedEnd = calendar.startOfDay(for: customEndDate)
+
+        if normalizedEnd > today {
+            normalizedEnd = today
+        }
+        if normalizedStart > normalizedEnd {
+            normalizedStart = normalizedEnd
+        }
+
+        let inclusiveSpan = (calendar.dateComponents([.day], from: normalizedStart, to: normalizedEnd).day ?? 0) + 1
+        if inclusiveSpan > 365 {
+            normalizedStart = calendar.date(byAdding: .day, value: -364, to: normalizedEnd) ?? normalizedStart
+        }
+
+        copy.customStartDate = normalizedStart
+        copy.customEndDate = normalizedEnd
+
+        if copy.mode == .preset {
+            copy.offset = min(0, copy.offset)
+        }
+
+        let allowed = HistoryAggregationPolicy.allowedGranularitiesAssumingNormalized(copy)
+        if let manual = copy.manualAggregation, !allowed.contains(manual) {
+            copy.manualAggregation = nil
+        }
+
+        return copy
+    }
+
+    var customSpanDays: Int {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: customStartDate)
+        let end = calendar.startOfDay(for: customEndDate)
+        let span = (calendar.dateComponents(
+            [.day],
+            from: min(start, end),
+            to: max(start, end)
+        ).day ?? 0) + 1
+        return max(1, span)
+    }
+
+    var navigationStepDays: Int {
+        switch mode {
+        case .preset:
+            return preset.rollingDays
+        case .custom:
+            return customSpanDays
+        }
+    }
+
+    func dateInterval(now: Date = Date(), calendar: Calendar = .current) -> DateInterval {
+        let normalized = normalized(now: now, calendar: calendar)
+        switch normalized.mode {
+        case .preset:
+            if normalized.preset == .day {
+                let startOfToday = calendar.startOfDay(for: now)
+                if normalized.offset == 0 {
+                    return DateInterval(start: startOfToday, end: now)
+                }
+
+                let dayStart = calendar.date(byAdding: .day, value: normalized.offset, to: startOfToday) ?? startOfToday
+                let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+                return DateInterval(start: dayStart, end: dayEnd)
+            }
+
+            let spanDays = normalized.preset.rollingDays
+            let shiftDays = normalized.offset * spanDays
+            let shiftedEnd = calendar.date(byAdding: .day, value: shiftDays, to: now) ?? now
+            let shiftedStart = calendar.date(byAdding: .day, value: -spanDays, to: shiftedEnd) ?? shiftedEnd
+            return DateInterval(start: shiftedStart, end: shiftedEnd)
+        case .custom:
+            let baseStart = calendar.startOfDay(for: normalized.customStartDate)
+            let baseEndExclusive = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: normalized.customEndDate)) ?? baseStart
+            let spanDays = normalized.customSpanDays
+            let shiftDays = normalized.offset * spanDays
+            let shiftedStart = calendar.date(byAdding: .day, value: shiftDays, to: baseStart) ?? baseStart
+            let shiftedEnd = calendar.date(byAdding: .day, value: shiftDays, to: baseEndExclusive) ?? baseEndExclusive
+            return DateInterval(start: shiftedStart, end: shiftedEnd)
+        }
+    }
+
+    func canNavigateForward(now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        offset < 0
+    }
+}
+
+enum HistoryAggregationPolicy {
+    static let maxBarsBeforeEscalation = 100
+
+    static func autoGranularity(
+        for selection: HistorySelection,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> AggregationGranularity {
+        let normalized = selection.normalized(now: now, calendar: calendar)
+        return autoGranularityAssumingNormalized(normalized)
+    }
+
+    static func autoGranularityAssumingNormalized(
+        _ normalized: HistorySelection
+    ) -> AggregationGranularity {
+        if normalized.mode == .preset, normalized.preset == .year {
+            // Year view is explicitly weekly by default.
+            return .week
+        }
+
+        let spanDays = normalized.mode == .preset ? normalized.preset.rollingDays : normalized.customSpanDays
+        // Start from the finest meaningful granularity for history and escalate only when
+        // that level would exceed the configured max bar count.
+        let hourlyBars = spanDays * 24
+        if hourlyBars <= maxBarsBeforeEscalation {
+            return .hour
+        }
+        if spanDays <= maxBarsBeforeEscalation {
+            return .day
+        }
+
+        let spanWeeks = Int(ceil(Double(spanDays) / 7.0))
+        if spanWeeks <= maxBarsBeforeEscalation {
+            return .week
+        }
+        return .month
+    }
+
+    static func allowedGranularities(
+        for selection: HistorySelection,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [AggregationGranularity] {
+        let normalized = selection.normalized(now: now, calendar: calendar)
+        return allowedGranularitiesAssumingNormalized(normalized)
+    }
+
+    static func allowedGranularitiesAssumingNormalized(
+        _ normalized: HistorySelection
+    ) -> [AggregationGranularity] {
+        [autoGranularityAssumingNormalized(normalized)]
+    }
+
+    static func resolvedGranularity(
+        for selection: HistorySelection,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> AggregationGranularity {
+        let normalized = selection.normalized(now: now, calendar: calendar)
+        let allowed = allowedGranularitiesAssumingNormalized(normalized)
+        if let manual = normalized.manualAggregation, allowed.contains(manual) {
+            return manual
+        }
+        return autoGranularityAssumingNormalized(normalized)
+    }
+}
+
 /// Time frame options for viewing metrics.
+/// Legacy enum kept for migration compatibility.
 enum TimeFrame: String, CaseIterable {
     case today = "Today"
     case lastWeek = "Week"
@@ -62,6 +329,7 @@ enum TimeFrame: String, CaseIterable {
 }
 
 /// Aggregation options for month history charts.
+/// Legacy enum kept for migration compatibility.
 enum MonthAggregation: String, CaseIterable, Hashable {
     case day = "Day"
     case week = "Week"
