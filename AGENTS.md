@@ -36,7 +36,7 @@ swift test         # Run tests
   - tag version must equal Xcode `MARKETING_VERSION`
   - archive build must succeed
   - DMG sign/notarize/staple/validate must succeed
-- Workflow runs on GitHub-hosted `macos-15` (public repo standard runner)
+- Workflow runs on GitHub-hosted `macos-26` (public repo standard runner)
 - Required repo secrets for release workflow:
   - `SIGN_IDENTITY` (Developer ID Application identity string)
   - `NOTARY_PROFILE` (notarytool keychain profile name, e.g. `TENDON_TALLY_NOTARY`)
