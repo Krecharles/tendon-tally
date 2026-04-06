@@ -79,6 +79,16 @@ final class StatusItemController: NSObject {
         )
         copyYesterdayItem.target = self
         quickActionsMenu.addItem(copyYesterdayItem)
+
+        quickActionsMenu.addItem(NSMenuItem.separator())
+
+        let checkUpdatesItem = NSMenuItem(
+            title: "Check for Updates...",
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""
+        )
+        checkUpdatesItem.target = self
+        quickActionsMenu.addItem(checkUpdatesItem)
     }
 
     private func showQuickActionsMenu(using event: NSEvent) {
@@ -95,6 +105,13 @@ final class StatusItemController: NSObject {
     @objc
     private func copyYesterdayMetrics() {
         copyMetrics(for: .yesterday)
+    }
+
+    @objc
+    private func checkForUpdates() {
+        Task {
+            await AppUpdateChecker.shared.checkForUpdates(trigger: .manual)
+        }
     }
 
     private func copyMetrics(for day: DailyExportDay) {

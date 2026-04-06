@@ -23,6 +23,7 @@ final class AppPreferences {
         static let breakLastActivityAt = "breakLastActivityAt"
         static let breakLastBreakEndedAt = "breakLastBreakEndedAt"
         static let breakRemindersSnoozedUntil = "breakRemindersSnoozedUntil"
+        static let lastUpdateCheckAt = "lastUpdateCheckAt"
     }
 
     // MARK: - History Selection
@@ -153,6 +154,11 @@ final class AppPreferences {
     var breakRemindersSnoozedUntil: Date? {
         get { defaults.object(forKey: Keys.breakRemindersSnoozedUntil) as? Date }
         set { defaults.set(newValue, forKey: Keys.breakRemindersSnoozedUntil) }
+    }
+
+    var lastUpdateCheckAt: Date? {
+        get { defaults.object(forKey: Keys.lastUpdateCheckAt) as? Date }
+        set { defaults.set(newValue, forKey: Keys.lastUpdateCheckAt) }
     }
 
     // MARK: - Migration Helpers
