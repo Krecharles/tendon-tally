@@ -183,7 +183,7 @@ final class TimeSeriesCalculatorTests: XCTestCase {
         XCTAssertEqual(totalKeys, 300)
 
         for point in result {
-            let weekStart = calendar.dateInterval(of: .weekOfYear, for: point.time)?.start ?? point.time
+            let weekStart = AggregationGranularity.week.alignedStart(for: point.time, calendar: calendar)
             XCTAssertEqual(point.time, weekStart)
             let hour = calendar.component(.hour, from: point.time)
             XCTAssertEqual(hour, 0)

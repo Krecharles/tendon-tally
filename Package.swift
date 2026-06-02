@@ -25,10 +25,10 @@ let package = Package(
                 "AGENTS.md",
                 "CLAUDE.md",
                 "assets",
+                "LICENSE",
                 "make-dmg.sh",
                 "release-input",
                 "release-output",
-                "run.sh",
                 "Tests"
             ],
             sources: [

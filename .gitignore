@@ -9,5 +9,6 @@
 xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
-release-output/
+release-output/*
+!release-output/.gitkeep
 release-input/*.app
