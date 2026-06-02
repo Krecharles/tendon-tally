@@ -96,7 +96,7 @@ private struct AppCommandMenu: Commands {
 
     private func selectDashboardTab(_ tab: FullDashboardView.Tab) {
         UserDefaults.standard.set(tab.rawValue, forKey: "selectedTab")
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        SettingsManager.shared.activateRespectingDockVisibility()
         openWindow(id: "main-dashboard")
     }
 
@@ -147,11 +147,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var aggregator: MetricsAggregator?
     private var breakPillController: BreakPillController?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        SettingsManager.shared.applySavedDockVisibility()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Apply dock visibility setting on launch
-        let settingsManager = SettingsManager.shared
-        let showInDock = settingsManager.getShowInDock()
-        settingsManager.setShowInDock(showInDock) // This applies the setting
+        SettingsManager.shared.applySavedDockVisibility()
 
         let pillController = BreakPillController()
         self.breakPillController = pillController
@@ -175,9 +176,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         aggregator.start()
 
         // Bring app to foreground on launch
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        SettingsManager.shared.activateRespectingDockVisibility()
         sanitizeMainMenu()
         DispatchQueue.main.async { [weak self] in
+            SettingsManager.shared.applySavedDockVisibility()
             self?.sanitizeMainMenu()
         }
 
@@ -198,16 +200,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        SettingsManager.shared.applySavedDockVisibility()
+
         // If there are no visible windows, activate the app
         // The Window scene will be opened by SwiftUI automatically
         if !flag {
-            NSApplication.shared.activate(ignoringOtherApps: true)
+            SettingsManager.shared.activateRespectingDockVisibility()
             sanitizeMainMenu()
         }
         return true
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        SettingsManager.shared.applySavedDockVisibility()
         sanitizeMainMenu()
     }
 

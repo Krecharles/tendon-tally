@@ -163,7 +163,7 @@ struct DashboardView: View {
     }
 
     private func openDashboard() {
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        SettingsManager.shared.activateRespectingDockVisibility()
         openWindow(id: "main-dashboard")
     }
 }

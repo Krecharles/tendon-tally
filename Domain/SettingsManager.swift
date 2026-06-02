@@ -45,6 +45,20 @@ final class SettingsManager {
     
     func setShowInDock(_ enabled: Bool) {
         userDefaults.set(enabled, forKey: showInDockKey)
+        applyShowInDockPreference(activateAfterApplying: true)
+    }
+
+    func applySavedDockVisibility() {
+        applyShowInDockPreference(activateAfterApplying: false)
+    }
+
+    func activateRespectingDockVisibility() {
+        applyShowInDockPreference(activateAfterApplying: false)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func applyShowInDockPreference(activateAfterApplying: Bool) {
+        let enabled = getShowInDock()
 
         // Set activation policy based on preference
         if enabled {
@@ -53,10 +67,12 @@ final class SettingsManager {
             NSApp.setActivationPolicy(.accessory)
         }
 
-        // Re-activate the app so the current window stays visible and focused
-        // (changing activation policy can cause macOS to deactivate the app)
-        DispatchQueue.main.async {
-            NSApp.activate(ignoringOtherApps: true)
+        if activateAfterApplying {
+            // Re-activate the app so the current window stays visible and focused
+            // (changing activation policy can cause macOS to deactivate the app)
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 }
