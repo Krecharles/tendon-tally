@@ -254,6 +254,40 @@ final class TimeSeriesCalculatorTests: XCTestCase {
         XCTAssertTrue(todayBucket?.isPartial ?? false)
     }
 
+    func testIntervalApiStopsCurrentRangeAtNowInsteadOfFutureBucketBoundary() {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 6
+        components.day = 2
+        components.hour = 12
+        let now = calendar.date(from: components)!
+
+        let weekStart = AggregationGranularity.week.alignedStart(for: now, calendar: calendar)
+        let weekEnd = AggregationGranularity.week.addingOneStep(to: weekStart, calendar: calendar)
+
+        let mondaySample = makeSample(
+            start: weekStart.addingTimeInterval(60 * 60),
+            keys: 700
+        )
+        let tuesdaySample = makeSample(
+            start: calendar.startOfDay(for: now).addingTimeInterval(60 * 60),
+            keys: 300
+        )
+
+        let result = TimeSeriesCalculator.calculateTimeSeries(
+            samples: [mondaySample, tuesdaySample],
+            currentSample: nil,
+            dateInterval: DateInterval(start: weekStart, end: weekEnd),
+            granularity: .day,
+            includeCurrentSample: false,
+            now: now
+        )
+
+        XCTAssertEqual(result.count, 2)
+        XCTAssertEqual(result.reduce(0) { $0 + $1.keyPressCount }, 1_000)
+        XCTAssertTrue(result[1].isPartial)
+    }
+
     func testIntervalApiSingleDayRangeProducesSingleDailyBucket() {
         let now = Date()
         let start = calendar.startOfDay(for: now)

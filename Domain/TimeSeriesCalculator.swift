@@ -24,8 +24,7 @@ struct TimeSeriesCalculator {
         let calendar = Calendar.current
 
         let containsNow = now >= startDate && now <= endDate
-        let baseRangeEnd = containsNow ? max(endDate, now) : endDate
-        let rangeEndExclusive = containsNow ? baseRangeEnd.addingTimeInterval(.ulpOfOne) : baseRangeEnd
+        let rangeEndExclusive = containsNow ? now.addingTimeInterval(.ulpOfOne) : endDate
         guard rangeEndExclusive > startDate else {
             return []
         }
