@@ -11,12 +11,7 @@ struct TendonTallyApp: App {
     /// Using Window instead of WindowGroup for single-instance utility window that can be reopened.
     var body: some Scene {
         Window("Dashboard", id: "main-dashboard") {
-            if let viewModel = appState.viewModel {
-                FullDashboardView(viewModel: viewModel)
-            } else {
-                ProgressView("Loading...")
-                    .frame(width: 200, height: 200)
-            }
+            DashboardWindowContent(appState: appState)
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact)
@@ -24,6 +19,38 @@ struct TendonTallyApp: App {
         .windowResizability(.contentSize)
         .commands {
             AppCommandMenu()
+        }
+    }
+}
+
+@MainActor
+private struct DashboardWindowContent: View {
+    @Environment(\.openWindow) private var openWindow
+    @ObservedObject var appState: AppState
+
+    var body: some View {
+        Group {
+            if let viewModel = appState.viewModel {
+                FullDashboardView(viewModel: viewModel)
+            } else {
+                ProgressView("Loading...")
+                    .frame(width: 200, height: 200)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppState.openDashboardNotification)) { _ in
+            openDashboardWindow()
+        }
+    }
+
+    private func openDashboardWindow() {
+        SettingsManager.shared.activateRespectingDockVisibility()
+        openWindow(id: "main-dashboard")
+
+        DispatchQueue.main.async {
+            SettingsManager.shared.activateRespectingDockVisibility()
+            NSApp.dashboardWindows.forEach { window in
+                window.makeKeyAndOrderFront(nil)
+            }
         }
     }
 }
@@ -201,14 +228,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         SettingsManager.shared.applySavedDockVisibility()
+        NotificationCenter.default.post(name: AppState.openDashboardNotification, object: nil)
 
-        // If there are no visible windows, activate the app
-        // The Window scene will be opened by SwiftUI automatically
+        // Opening an already-running accessory app can briefly activate and then hand focus
+        // back unless the dashboard window is explicitly ordered front.
+        SettingsManager.shared.activateRespectingDockVisibility()
+        NSApp.dashboardWindows.forEach { window in
+            window.makeKeyAndOrderFront(nil)
+        }
+
         if !flag {
-            SettingsManager.shared.activateRespectingDockVisibility()
             sanitizeMainMenu()
         }
-        return true
+        return false
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -237,6 +269,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if let submenu = item.submenu {
                 removeMenuItems(titled: title, in: submenu)
             }
+        }
+    }
+}
+
+private extension NSApplication {
+    var dashboardWindows: [NSWindow] {
+        windows.filter { window in
+            window.title == "Dashboard" || window.identifier?.rawValue == "main-dashboard"
         }
     }
 }
