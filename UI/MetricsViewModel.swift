@@ -64,6 +64,16 @@ final class MetricsViewModel: ObservableObject {
     private var timeSeriesCache: [TimeSeriesCacheKey: [TimeSeriesDataPoint]] = [:]
     private var intervalSeriesCache: [IntervalSeriesCacheKey: [TimeSeriesDataPoint]] = [:]
     private var aggregatedMetricsCache: [AggregatedMetricsCacheKey: AggregatedMetrics] = [:]
+    private var breakEvaluationTimer: Timer?
+    private var todayHistoryCache = AggregatedMetrics(
+        keyPressCount: 0,
+        mouseClickCount: 0,
+        scrollTicks: 0,
+        mouseDistance: 0
+    )
+    private var todayHistoryCacheStart = Date.distantPast
+    private var todayHistoryCacheCount = -1
+    private var todayHistoryCacheFirstID: UUID?
 
     init(
         aggregator: MetricsAggregator,
@@ -100,6 +110,7 @@ final class MetricsViewModel: ObservableObject {
             lastActivityAt: aggregator.lastActivityAt ?? prefs.breakLastActivityAt,
             config: prefs.breaksConfig.normalized()
         )
+        refreshTodayHistoryCacheIfNeeded(history: aggregator.history, now: Date(), force: true)
 
         self.breakPillController.onSnoozeRequested = { [weak self] option in
             self?.startBreakReminderSnooze(option)
@@ -112,7 +123,8 @@ final class MetricsViewModel: ObservableObject {
                 self.hasReceivedFirstAggregatorUpdate = true
                 self.currentSample = current
                 self.recentHistory = Array(history.prefix(12))
-                self.todayTotals = MetricsViewModel.computeTodayTotals(current: current, history: history)
+                self.refreshTodayHistoryCacheIfNeeded(history: history)
+                self.todayTotals = self.makeTodayTotals(current: current)
                 self.evaluateBreaksAndHandleReminder()
             }
         }
@@ -165,6 +177,56 @@ final class MetricsViewModel: ObservableObject {
             scrollTicks: totalScrollTicks,
             scrollDistance: 0,
             mouseDistance: totalMouseDistance
+        )
+    }
+
+    private func refreshTodayHistoryCacheIfNeeded(
+        history: [UsageSample],
+        now: Date = Date(),
+        force: Bool = false
+    ) {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: now)
+        let firstID = history.first?.id
+        guard force ||
+                startOfDay != todayHistoryCacheStart ||
+                history.count != todayHistoryCacheCount ||
+                firstID != todayHistoryCacheFirstID else {
+            return
+        }
+
+        var keys = 0
+        var clicks = 0
+        var scrollTicks = 0
+        var mouseDistance = 0.0
+        for sample in history where sample.end >= startOfDay && sample.start <= now {
+            keys += sample.keyPressCount
+            clicks += sample.mouseClickCount
+            scrollTicks += sample.scrollTicks
+            mouseDistance += sample.mouseDistance
+        }
+        todayHistoryCache = AggregatedMetrics(
+            keyPressCount: keys,
+            mouseClickCount: clicks,
+            scrollTicks: scrollTicks,
+            mouseDistance: mouseDistance
+        )
+        todayHistoryCacheStart = startOfDay
+        todayHistoryCacheCount = history.count
+        todayHistoryCacheFirstID = firstID
+    }
+
+    private func makeTodayTotals(current: UsageSample, now: Date = Date()) -> UsageSample {
+        let includesCurrent = current.end >= todayHistoryCacheStart && current.start <= now
+        return UsageSample(
+            id: UUID(),
+            start: todayHistoryCacheStart,
+            end: now,
+            keyPressCount: todayHistoryCache.keyPressCount + (includesCurrent ? current.keyPressCount : 0),
+            mouseClickCount: todayHistoryCache.mouseClickCount + (includesCurrent ? current.mouseClickCount : 0),
+            scrollTicks: todayHistoryCache.scrollTicks + (includesCurrent ? current.scrollTicks : 0),
+            scrollDistance: 0,
+            mouseDistance: todayHistoryCache.mouseDistance + (includesCurrent ? current.mouseDistance : 0)
         )
     }
 
@@ -284,6 +346,7 @@ final class MetricsViewModel: ObservableObject {
 
     func reloadHistory() {
         invalidateHistoryDerivedCaches()
+        todayHistoryCacheCount = -1
         aggregator.reloadHistory()
         evaluateBreaksAndHandleReminder()
     }
@@ -685,6 +748,43 @@ final class MetricsViewModel: ObservableObject {
                 breakPillController.update(evaluation: evaluation, config: breaksConfig)
             }
         }
+        scheduleNextBreakEvaluation(now: now)
+    }
+
+    /// Uses one-shot timers at meaningful phase boundaries. Per-second updates are reserved for
+    /// the short period where a due-break pill is visibly counting idle time.
+    private func scheduleNextBreakEvaluation(now: Date) {
+        breakEvaluationTimer?.invalidate()
+        breakEvaluationTimer = nil
+        guard breaksConfig.remindersEnabled else { return }
+
+        let nextDate: Date?
+        switch breaksEvaluation.phase {
+        case .work:
+            var candidates: [Date] = []
+            if let lastBreakEndedAt = breaksEvaluation.lastBreakEndedAt {
+                candidates.append(lastBreakEndedAt.addingTimeInterval(breaksEvaluation.workWindowSeconds))
+            }
+            if let lastActivityAt = aggregator.lastActivityAt {
+                candidates.append(lastActivityAt.addingTimeInterval(breaksEvaluation.requiredBreakSeconds))
+            }
+            nextDate = candidates.min()
+        case .due:
+            nextDate = now.addingTimeInterval(1)
+        case .onBreak:
+            nextDate = nil
+        }
+
+        guard let nextDate else { return }
+        let interval = max(1, nextDate.timeIntervalSince(now))
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.evaluateBreaksAndHandleReminder()
+            }
+        }
+        timer.tolerance = breaksEvaluation.phase == .due ? 0.1 : min(5, interval * 0.05)
+        breakEvaluationTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func isBreakReminderSnoozed(now: Date) -> Bool {

@@ -35,11 +35,16 @@ final class EventTapManager {
     private var globalMonitors: [Any] = []
     private var localMonitors: [Any] = []
 
-    private let queue = DispatchQueue(label: "TendonTally.EventTapManager")
+    private let stateLock = NSLock()
     private var lastMouseLocation: CGPoint?
+    private var activityNotificationScheduled = false
+    private var activityNotificationGeneration = 0
 
-    /// Current snapshot is updated on `queue` and read via `snapshot()` API.
+    /// Current snapshot is protected by `stateLock` and read via `snapshot()` API.
     private var _snapshot = RawActivitySnapshot()
+
+    /// Coalesced activity notification, delivered on the main thread at most once per second.
+    var onActivity: (() -> Void)?
 
     /// Called on the main thread when permissions appear to be missing.
     var onPermissionOrTapFailure: ((String) -> Void)?
@@ -49,6 +54,7 @@ final class EventTapManager {
 
     private let logger = Logger(subsystem: "com.tendontally", category: "EventTapManager")
     private var retryTimer: Timer?
+    private var retryDelay: TimeInterval = 3
     private var hasRegisteredMonitors = false
 
     /// Start monitoring events. If no events are received (permissions missing), retries periodically.
@@ -72,15 +78,15 @@ final class EventTapManager {
         }
 
         stopRetryTimer()
+        retryDelay = 3
         logger.info("Registering NSEvent monitors...")
         var failedGlobalMasks: [UInt64] = []
 
         // Key down — filter out auto-repeat so holding a key counts as one stroke
         let keyHandler: (NSEvent) -> NSEvent? = { [weak self] event in
             if !event.isARepeat {
-                self?.queue.async {
-                    self?._snapshot.keyPressCount += 1
-                    self?._snapshot.lastActivityAt = Date()
+                self?.recordActivity { snapshot in
+                    snapshot.keyPressCount += 1
                 }
             }
             return event
@@ -91,9 +97,8 @@ final class EventTapManager {
 
         // Mouse clicks
         let leftClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.queue.async {
-                self?._snapshot.mouseClickCount += 1
-                self?._snapshot.lastActivityAt = Date()
+            self?.recordActivity { snapshot in
+                snapshot.mouseClickCount += 1
             }
             return event
         }
@@ -102,9 +107,8 @@ final class EventTapManager {
         }
 
         let rightClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.queue.async {
-                self?._snapshot.mouseClickCount += 1
-                self?._snapshot.lastActivityAt = Date()
+            self?.recordActivity { snapshot in
+                snapshot.mouseClickCount += 1
             }
             return event
         }
@@ -113,9 +117,8 @@ final class EventTapManager {
         }
 
         let otherClickHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.queue.async {
-                self?._snapshot.mouseClickCount += 1
-                self?._snapshot.lastActivityAt = Date()
+            self?.recordActivity { snapshot in
+                snapshot.mouseClickCount += 1
             }
             return event
         }
@@ -134,9 +137,8 @@ final class EventTapManager {
                 magnitude = Int(deltaY)
             }
             if magnitude > 0 {
-                self?.queue.async {
-                    self?._snapshot.scrollTicks += magnitude
-                    self?._snapshot.lastActivityAt = Date()
+                self?.recordActivity { snapshot in
+                    snapshot.scrollTicks += magnitude
                 }
             }
             return event
@@ -148,16 +150,15 @@ final class EventTapManager {
         // Mouse movement
         let moveHandler: (NSEvent) -> NSEvent? = { [weak self] event in
             let location = NSEvent.mouseLocation
-            self?.queue.async {
+            self?.recordActivity { [weak self] snapshot in
                 guard let self else { return }
-                if let last = self.lastMouseLocation {
+                if let last = lastMouseLocation {
                     let dx = Double(location.x - last.x)
                     let dy = Double(location.y - last.y)
                     let distance = (dx * dx + dy * dy).squareRoot()
-                    self._snapshot.mouseDistance += distance
+                    snapshot.mouseDistance += distance
                 }
-                self.lastMouseLocation = location
-                self._snapshot.lastActivityAt = Date()
+                lastMouseLocation = location
             }
             return event
         }
@@ -168,16 +169,15 @@ final class EventTapManager {
         // Mouse dragging (also counts as movement)
         let dragHandler: (NSEvent) -> NSEvent? = { [weak self] event in
             let location = NSEvent.mouseLocation
-            self?.queue.async {
+            self?.recordActivity { [weak self] snapshot in
                 guard let self else { return }
-                if let last = self.lastMouseLocation {
+                if let last = lastMouseLocation {
                     let dx = Double(location.x - last.x)
                     let dy = Double(location.y - last.y)
                     let distance = (dx * dx + dy * dy).squareRoot()
-                    self._snapshot.mouseDistance += distance
+                    snapshot.mouseDistance += distance
                 }
-                self.lastMouseLocation = location
-                self._snapshot.lastActivityAt = Date()
+                lastMouseLocation = location
             }
             return event
         }
@@ -284,10 +284,15 @@ final class EventTapManager {
 
     private func startRetryTimer() {
         guard retryTimer == nil else { return }
-        retryTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
-            self?.registerMonitors()
+        let timer = Timer.scheduledTimer(withTimeInterval: retryDelay, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.retryTimer = nil
+            self.registerMonitors()
         }
-        RunLoop.main.add(retryTimer!, forMode: .common)
+        timer.tolerance = min(30, retryDelay / 2)
+        retryTimer = timer
+        retryDelay = min(5 * 60, retryDelay * 2)
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func stopRetryTimer() {
@@ -302,28 +307,60 @@ final class EventTapManager {
         }
         removeAllMonitors()
         hasRegisteredMonitors = false
-        queue.async { [weak self] in
-            self?.lastMouseLocation = nil
-            self?._snapshot = RawActivitySnapshot()
-        }
+        stateLock.lock()
+        lastMouseLocation = nil
+        _snapshot = RawActivitySnapshot()
+        activityNotificationScheduled = false
+        activityNotificationGeneration += 1
+        stateLock.unlock()
     }
 
     /// Thread-safe snapshot of the current raw activity counts.
     func snapshot() -> RawActivitySnapshot {
-        var result = RawActivitySnapshot()
-        queue.sync {
-            result = _snapshot
-        }
+        stateLock.lock()
+        let result = _snapshot
+        stateLock.unlock()
         return result
     }
 
     /// Reset the raw counters (used when rolling to a new window).
     /// Synchronous so that the next snapshot() call reads zeroes.
     func resetCounters() {
-        queue.sync {
-            let lastActivityAt = self._snapshot.lastActivityAt
-            self._snapshot = RawActivitySnapshot()
-            self._snapshot.lastActivityAt = lastActivityAt
+        stateLock.lock()
+        let lastActivityAt = _snapshot.lastActivityAt
+        _snapshot = RawActivitySnapshot()
+        _snapshot.lastActivityAt = lastActivityAt
+        stateLock.unlock()
+    }
+
+    /// Mutates counters directly under a short lock instead of enqueuing one block per HID event.
+    /// The UI/domain notification is trailing-edge coalesced, so rapid mouse input produces at
+    /// most one main-thread update per second while the raw counters remain exact.
+    private func recordActivity(_ update: (inout RawActivitySnapshot) -> Void) {
+        stateLock.lock()
+        update(&_snapshot)
+        _snapshot.lastActivityAt = Date()
+        let shouldScheduleNotification = !activityNotificationScheduled
+        let generation: Int
+        if shouldScheduleNotification {
+            activityNotificationScheduled = true
+            activityNotificationGeneration += 1
+        }
+        generation = activityNotificationGeneration
+        stateLock.unlock()
+
+        guard shouldScheduleNotification else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self else { return }
+            self.stateLock.lock()
+            guard generation == self.activityNotificationGeneration else {
+                self.stateLock.unlock()
+                return
+            }
+            self.activityNotificationScheduled = false
+            let callback = self.onActivity
+            self.stateLock.unlock()
+            callback?()
         }
     }
 }

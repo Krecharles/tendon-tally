@@ -5,11 +5,12 @@ final class MetricsAggregatorTests: XCTestCase {
     private final class MockEventTapManager: EventTapping {
         var onPermissionOrTapFailure: ((String) -> Void)?
         var onPermissionGranted: (() -> Void)?
+        var onActivity: (() -> Void)?
 
         var snapshotValue = RawActivitySnapshot()
 
         func start() {}
-        func stop() {}
+        func stop() { snapshotValue = RawActivitySnapshot() }
         func snapshot() -> RawActivitySnapshot { snapshotValue }
         func resetCounters() { snapshotValue = RawActivitySnapshot() }
 
@@ -20,6 +21,10 @@ final class MetricsAggregatorTests: XCTestCase {
         func emitPermissionGranted() {
             onPermissionGranted?()
         }
+
+        func emitActivity() {
+            onActivity?()
+        }
     }
 
     private final class MockPersistence: MetricsPersisting {
@@ -27,6 +32,7 @@ final class MetricsAggregatorTests: XCTestCase {
         var storedCurrentSample: UsageSample?
 
         var finalizedSyncSaves: [UsageSample] = []
+        var currentAsyncSaves: [UsageSample] = []
         var currentSyncSaves: [UsageSample] = []
         var deletedCurrentSample = false
 
@@ -40,7 +46,9 @@ final class MetricsAggregatorTests: XCTestCase {
             finalizedSyncSaves.append(sample)
         }
 
-        func saveCurrentSample(_ currentSample: UsageSample) {}
+        func saveCurrentSample(_ currentSample: UsageSample) {
+            currentAsyncSaves.append(currentSample)
+        }
 
         func saveCurrentSampleSync(_ currentSample: UsageSample) {
             currentSyncSaves.append(currentSample)
@@ -143,6 +151,86 @@ final class MetricsAggregatorTests: XCTestCase {
         eventTap.emitPermissionGranted()
 
         wait(for: [failureExpectation, grantedExpectation], timeout: 1.0)
+    }
+
+    @MainActor
+    func testActivityNotificationPublishesLatestSnapshot() async {
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(eventTapManager: eventTap, persistence: persistence)
+        let updateExpectation = expectation(description: "Activity publishes an update")
+
+        aggregator.onUpdate = { current, _ in
+            XCTAssertEqual(current.keyPressCount, 12)
+            XCTAssertEqual(current.mouseDistance, 345, accuracy: 0.001)
+            updateExpectation.fulfill()
+        }
+        eventTap.snapshotValue.keyPressCount = 12
+        eventTap.snapshotValue.mouseDistance = 345
+        eventTap.snapshotValue.lastActivityAt = Date()
+        eventTap.emitActivity()
+
+        await fulfillment(of: [updateExpectation], timeout: 1.0)
+        XCTAssertEqual(aggregator.currentSample.keyPressCount, 12)
+    }
+
+    func testPrepareForSleepFlushesLatestSnapshotSynchronously() {
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(eventTapManager: eventTap, persistence: persistence)
+
+        eventTap.snapshotValue.keyPressCount = 7
+        eventTap.snapshotValue.mouseClickCount = 3
+        eventTap.snapshotValue.lastActivityAt = Date()
+        aggregator.prepareForSleep()
+
+        XCTAssertEqual(persistence.currentSyncSaves.count, 1)
+        XCTAssertEqual(persistence.currentSyncSaves.first?.keyPressCount, 7)
+        XCTAssertEqual(persistence.currentSyncSaves.first?.mouseClickCount, 3)
+    }
+
+    func testStopFlushesBeforeEventCountersAreCleared() {
+        let persistence = MockPersistence()
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(eventTapManager: eventTap, persistence: persistence)
+
+        eventTap.snapshotValue.keyPressCount = 9
+        eventTap.snapshotValue.lastActivityAt = Date()
+        aggregator.stop()
+
+        XCTAssertEqual(persistence.currentSyncSaves.last?.keyPressCount, 9)
+        XCTAssertEqual(eventTap.snapshotValue.keyPressCount, 0)
+    }
+
+    @MainActor
+    func testRestoredCurrentSampleAddsNewSessionCounters() async {
+        let now = Date()
+        let persistence = MockPersistence()
+        persistence.storedCurrentSample = sample(
+            start: now.addingTimeInterval(-60),
+            end: now.addingTimeInterval(240),
+            keys: 10,
+            clicks: 4
+        )
+        let eventTap = MockEventTapManager()
+        let aggregator = MetricsAggregator(
+            eventTapManager: eventTap,
+            persistence: persistence,
+            now: now
+        )
+        let updateExpectation = expectation(description: "Restored sample receives live counters")
+        aggregator.onUpdate = { current, _ in
+            XCTAssertEqual(current.keyPressCount, 12)
+            XCTAssertEqual(current.mouseClickCount, 5)
+            updateExpectation.fulfill()
+        }
+
+        eventTap.snapshotValue.keyPressCount = 2
+        eventTap.snapshotValue.mouseClickCount = 1
+        eventTap.snapshotValue.lastActivityAt = now
+        eventTap.emitActivity()
+
+        await fulfillment(of: [updateExpectation], timeout: 1.0)
     }
 
     @MainActor

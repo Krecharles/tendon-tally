@@ -17,8 +17,13 @@ final class MetricsAggregator {
     private(set) var currentSample: UsageSample
     private(set) var history: [UsageSample] = []
 
-    private var timer: Timer?
+    private var windowTimer: Timer?
     private var saveTimer: Timer?
+    private var hasUnsavedChanges = false
+    private var baseKeyPressCount = 0
+    private var baseMouseClickCount = 0
+    private var baseScrollTicks = 0
+    private var baseMouseDistance = 0.0
 
     /// Called on the main thread whenever currentSample or history changes.
     var onUpdate: ((UsageSample, [UsageSample]) -> Void)?
@@ -125,26 +130,34 @@ final class MetricsAggregator {
             let formatter = ISO8601DateFormatter()
             logger.info("Started new current sample window at \(formatter.string(from: now))")
         }
+
+        baseKeyPressCount = currentSample.keyPressCount
+        baseMouseClickCount = currentSample.mouseClickCount
+        baseScrollTicks = currentSample.scrollTicks
+        baseMouseDistance = currentSample.mouseDistance
+
+        self.eventTapManager.onActivity = { [weak self] in
+            self?.activityObserved()
+        }
     }
 
     func start() {
         logger.info("Starting metrics aggregation")
         eventTapManager.start()
-        startTimer()
-        startSaveTimer()
+        scheduleWindowTimer()
         pushUpdate()
     }
 
     func stop() {
         logger.info("Stopping metrics aggregation - saving final state")
-        timer?.invalidate()
-        timer = nil
+        windowTimer?.invalidate()
+        windowTimer = nil
         saveTimer?.invalidate()
         saveTimer = nil
-        eventTapManager.stop()
 
         // Refresh from the latest event counts before saving.
-        refreshCurrentSample(end: currentSample.end)
+        refreshCurrentSample(end: currentSample.end, publish: false)
+        eventTapManager.stop()
 
         // Synchronous save so the write completes before the process exits.
         persistence.saveCurrentSampleSync(self.currentSample)
@@ -153,43 +166,53 @@ final class MetricsAggregator {
 
     /// Reload history from persistence (useful after data deletion).
     func reloadHistory() {
-        let (stored, savedCurrent) = persistence.loadSamples()
+        let (stored, _) = persistence.loadSamples()
         self.history = stored.sorted { $0.start > $1.start }
-        if let saved = savedCurrent, saved.end > Date() {
-            self.currentSample = saved
-            self.windowStart = saved.start
-        }
         pushUpdate()
     }
 
     // MARK: - Timer & Windowing
 
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.tick()
+    private func scheduleWindowTimer(now: Date = Date()) {
+        windowTimer?.invalidate()
+        let interval = max(1, currentSample.end.timeIntervalSince(now))
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.rollWindow(to: Date())
         }
-        RunLoop.main.add(timer!, forMode: .common)
+        timer.tolerance = min(15, max(1, interval * 0.05))
+        windowTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func startSaveTimer() {
-        saveTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
-            self?.saveCurrentSample()
+        guard saveTimer == nil else { return }
+        let timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.saveTimer = nil
+            self.saveCurrentSample()
         }
-        RunLoop.main.add(saveTimer!, forMode: .common)
+        timer.tolerance = 15
+        saveTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func saveCurrentSample() {
         refreshCurrentSample(end: self.currentSample.end)
+        guard hasUnsavedChanges else { return }
         persistence.saveCurrentSample(self.currentSample)
+        hasUnsavedChanges = false
         logger.debug("Periodic save: current sample has \(self.currentSample.keyPressCount) keys, \(self.currentSample.mouseClickCount) clicks, \(self.currentSample.scrollTicks) scroll ticks")
     }
 
-    private func tick() {
+    private func activityObserved() {
         let now = Date()
         if now.timeIntervalSince(windowStart) >= windowLength {
             rollWindow(to: now)
         } else {
-            refreshCurrentSample(end: currentSample.end)
+            if refreshCurrentSample(end: currentSample.end) {
+                startSaveTimer()
+            }
         }
     }
 
@@ -208,6 +231,10 @@ final class MetricsAggregator {
 
         // Reset counters synchronously so the next snapshot reads zero.
         eventTapManager.resetCounters()
+        baseKeyPressCount = 0
+        baseMouseClickCount = 0
+        baseScrollTicks = 0
+        baseMouseDistance = 0
 
         // Start a new window.
         self.windowStart = now
@@ -223,28 +250,67 @@ final class MetricsAggregator {
             scrollDistance: 0,
             mouseDistance: 0
         )
+        saveTimer?.invalidate()
+        saveTimer = nil
         persistence.saveCurrentSample(self.currentSample)
+        hasUnsavedChanges = false
         let formatter = ISO8601DateFormatter()
         logger.info("Started new window at \(formatter.string(from: now))")
         pushUpdate()
+        scheduleWindowTimer(now: now)
     }
 
-    private func refreshCurrentSample(end: Date) {
+    @discardableResult
+    private func refreshCurrentSample(end: Date, publish: Bool = true) -> Bool {
         let raw = eventTapManager.snapshot()
         if let rawLastActivity = raw.lastActivityAt {
             lastActivityAt = rawLastActivity
         }
-        currentSample = UsageSample(
+        let refreshed = UsageSample(
             id: currentSample.id,
             start: windowStart,
             end: end,
-            keyPressCount: raw.keyPressCount,
-            mouseClickCount: raw.mouseClickCount,
-            scrollTicks: raw.scrollTicks,
+            keyPressCount: baseKeyPressCount + raw.keyPressCount,
+            mouseClickCount: baseMouseClickCount + raw.mouseClickCount,
+            scrollTicks: baseScrollTicks + raw.scrollTicks,
             scrollDistance: 0,
-            mouseDistance: raw.mouseDistance
+            mouseDistance: baseMouseDistance + raw.mouseDistance
         )
-        pushUpdate()
+        let changed = refreshed.keyPressCount != currentSample.keyPressCount ||
+            refreshed.mouseClickCount != currentSample.mouseClickCount ||
+            refreshed.scrollTicks != currentSample.scrollTicks ||
+            refreshed.mouseDistance != currentSample.mouseDistance ||
+            refreshed.end != currentSample.end
+        guard changed else { return false }
+        currentSample = refreshed
+        hasUnsavedChanges = true
+        if publish {
+            pushUpdate()
+        }
+        return true
+    }
+
+    /// Flushes activity and suspends periodic work before system sleep. Event monitors remain
+    /// registered; macOS delivers no input events while asleep and they resume without losing
+    /// the current window's raw counters.
+    func prepareForSleep() {
+        windowTimer?.invalidate()
+        windowTimer = nil
+        saveTimer?.invalidate()
+        saveTimer = nil
+        refreshCurrentSample(end: currentSample.end, publish: false)
+        persistence.saveCurrentSampleSync(currentSample)
+        hasUnsavedChanges = false
+    }
+
+    /// Reconciles an expired window after wake and restores energy-tolerant scheduling.
+    func resumeAfterWake(now: Date = Date()) {
+        if now.timeIntervalSince(windowStart) >= windowLength {
+            rollWindow(to: now)
+        } else {
+            scheduleWindowTimer(now: now)
+            pushUpdate()
+        }
     }
 
     private func pushUpdate() {

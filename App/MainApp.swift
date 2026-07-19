@@ -196,6 +196,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Start capturing events and metrics aggregation.
         aggregator.start()
+        let workspaceNotifications = NSWorkspace.shared.notificationCenter
+        workspaceNotifications.addObserver(
+            self,
+            selector: #selector(workspaceWillSleep(_:)),
+            name: NSWorkspace.willSleepNotification,
+            object: nil
+        )
+        workspaceNotifications.addObserver(
+            self,
+            selector: #selector(workspaceDidWake(_:)),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
 
         sanitizeMainMenu()
         DispatchQueue.main.async { [weak self] in
@@ -208,9 +221,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
         // Stop aggregator (this will save current sample)
         aggregator?.stop()
         statusItemController?.tearDown()
+    }
+
+    @objc private func workspaceWillSleep(_ notification: Notification) {
+        aggregator?.prepareForSleep()
+    }
+
+    @objc private func workspaceDidWake(_ notification: Notification) {
+        aggregator?.resumeAfterWake()
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

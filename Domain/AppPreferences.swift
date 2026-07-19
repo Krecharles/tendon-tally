@@ -143,17 +143,26 @@ final class AppPreferences {
 
     var breakLastActivityAt: Date? {
         get { defaults.object(forKey: Keys.breakLastActivityAt) as? Date }
-        set { defaults.set(newValue, forKey: Keys.breakLastActivityAt) }
+        set {
+            guard breakLastActivityAt != newValue else { return }
+            defaults.set(newValue, forKey: Keys.breakLastActivityAt)
+        }
     }
 
     var breakLastBreakEndedAt: Date? {
         get { defaults.object(forKey: Keys.breakLastBreakEndedAt) as? Date }
-        set { defaults.set(newValue, forKey: Keys.breakLastBreakEndedAt) }
+        set {
+            guard breakLastBreakEndedAt != newValue else { return }
+            defaults.set(newValue, forKey: Keys.breakLastBreakEndedAt)
+        }
     }
 
     var breakRemindersSnoozedUntil: Date? {
         get { defaults.object(forKey: Keys.breakRemindersSnoozedUntil) as? Date }
-        set { defaults.set(newValue, forKey: Keys.breakRemindersSnoozedUntil) }
+        set {
+            guard breakRemindersSnoozedUntil != newValue else { return }
+            defaults.set(newValue, forKey: Keys.breakRemindersSnoozedUntil)
+        }
     }
 
     var lastUpdateCheckAt: Date? {

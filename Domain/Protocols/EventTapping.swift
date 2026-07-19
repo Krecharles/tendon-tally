@@ -7,6 +7,7 @@ protocol EventTapping {
     func resetCounters()
     var onPermissionOrTapFailure: ((String) -> Void)? { get set }
     var onPermissionGranted: (() -> Void)? { get set }
+    var onActivity: (() -> Void)? { get set }
 }
 
 extension EventTapManager: EventTapping {}
