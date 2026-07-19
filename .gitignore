@@ -3,6 +3,7 @@
 .claude/settings.local.json
 .claude/*.local.*
 .xcode-build
+.xcode-derived/
 .DS_Store
 ._*
 .swiftpm/

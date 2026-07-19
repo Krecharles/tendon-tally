@@ -45,33 +45,31 @@ final class SettingsManager {
     
     func setShowInDock(_ enabled: Bool) {
         userDefaults.set(enabled, forKey: showInDockKey)
-        applyShowInDockPreference(activateAfterApplying: true)
+        applyShowInDockPreference(preserveVisibleWindows: true)
     }
 
     func applySavedDockVisibility() {
-        applyShowInDockPreference(activateAfterApplying: false)
+        applyShowInDockPreference(preserveVisibleWindows: false)
     }
 
-    func activateRespectingDockVisibility() {
-        applyShowInDockPreference(activateAfterApplying: false)
-        NSApp.activate(ignoringOtherApps: true)
-    }
+    private func applyShowInDockPreference(preserveVisibleWindows: Bool) {
+        let desiredPolicy: NSApplication.ActivationPolicy = getShowInDock() ? .regular : .accessory
+        guard NSApp.activationPolicy() != desiredPolicy else { return }
 
-    private func applyShowInDockPreference(activateAfterApplying: Bool) {
-        let enabled = getShowInDock()
+        let visibleWindows = preserveVisibleWindows
+            ? NSApp.dashboardWindows.filter(\.isVisible)
+            : []
 
-        // Set activation policy based on preference
-        if enabled {
-            NSApp.setActivationPolicy(.regular)
-        } else {
-            NSApp.setActivationPolicy(.accessory)
-        }
+        NSApp.setActivationPolicy(desiredPolicy)
 
-        if activateAfterApplying {
-            // Re-activate the app so the current window stays visible and focused
-            // (changing activation policy can cause macOS to deactivate the app)
+        if !visibleWindows.isEmpty {
+            // Changing activation policy can deactivate the app and move its windows
+            // behind other applications. Restore the dashboard the user was editing.
             DispatchQueue.main.async {
                 NSApp.activate(ignoringOtherApps: true)
+                visibleWindows.forEach { window in
+                    window.makeKeyAndOrderFront(nil)
+                }
             }
         }
     }

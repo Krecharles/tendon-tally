@@ -43,14 +43,8 @@ private struct DashboardWindowContent: View {
     }
 
     private func openDashboardWindow() {
-        SettingsManager.shared.activateRespectingDockVisibility()
-        openWindow(id: "main-dashboard")
-
-        DispatchQueue.main.async {
-            SettingsManager.shared.activateRespectingDockVisibility()
-            NSApp.dashboardWindows.forEach { window in
-                window.makeKeyAndOrderFront(nil)
-            }
+        DashboardWindowController.shared.show {
+            openWindow(id: "main-dashboard")
         }
     }
 }
@@ -123,8 +117,9 @@ private struct AppCommandMenu: Commands {
 
     private func selectDashboardTab(_ tab: FullDashboardView.Tab) {
         UserDefaults.standard.set(tab.rawValue, forKey: "selectedTab")
-        SettingsManager.shared.activateRespectingDockVisibility()
-        openWindow(id: "main-dashboard")
+        DashboardWindowController.shared.show {
+            openWindow(id: "main-dashboard")
+        }
     }
 
     private func copyMetrics(for day: DailyExportDay) {
@@ -202,11 +197,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Start capturing events and metrics aggregation.
         aggregator.start()
 
-        // Bring app to foreground on launch
-        SettingsManager.shared.activateRespectingDockVisibility()
         sanitizeMainMenu()
         DispatchQueue.main.async { [weak self] in
-            SettingsManager.shared.applySavedDockVisibility()
             self?.sanitizeMainMenu()
         }
 
@@ -227,14 +219,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        SettingsManager.shared.applySavedDockVisibility()
-        NotificationCenter.default.post(name: AppState.openDashboardNotification, object: nil)
-
-        // Opening an already-running accessory app can briefly activate and then hand focus
-        // back unless the dashboard window is explicitly ordered front.
-        SettingsManager.shared.activateRespectingDockVisibility()
-        NSApp.dashboardWindows.forEach { window in
-            window.makeKeyAndOrderFront(nil)
+        if SettingsManager.shared.getShowInDock() {
+            DashboardWindowController.shared.requestShow()
+        } else {
+            DashboardWindowController.shared.toggle()
         }
 
         if !flag {
@@ -244,7 +232,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
-        SettingsManager.shared.applySavedDockVisibility()
         sanitizeMainMenu()
     }
 
@@ -273,10 +260,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-private extension NSApplication {
+extension NSApplication {
     var dashboardWindows: [NSWindow] {
         windows.filter { window in
             window.title == "Dashboard" || window.identifier?.rawValue == "main-dashboard"
+        }
+    }
+}
+
+enum DashboardToggleAction: Equatable {
+    case show
+    case hide
+
+    static func resolve(isDashboardVisible: Bool, isApplicationActive: Bool) -> Self {
+        isDashboardVisible && isApplicationActive ? .hide : .show
+    }
+}
+
+/// Owns full-dashboard visibility independently from the app's Dock activation policy.
+@MainActor
+final class DashboardWindowController {
+    static let shared = DashboardWindowController()
+
+    private init() {}
+
+    func requestShow() {
+        NotificationCenter.default.post(name: AppState.openDashboardNotification, object: nil)
+    }
+
+    func show(openWindow: (() -> Void)? = nil) {
+        openWindow?()
+
+        DispatchQueue.main.async {
+            NSApp.unhide(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.dashboardWindows.forEach { window in
+                if window.isMiniaturized {
+                    window.deminiaturize(nil)
+                }
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
+    func hide() {
+        NSApp.dashboardWindows.forEach { window in
+            window.orderOut(nil)
+        }
+        NSApp.hide(nil)
+    }
+
+    func toggle() {
+        let action = DashboardToggleAction.resolve(
+            isDashboardVisible: NSApp.dashboardWindows.contains(where: \.isVisible),
+            isApplicationActive: NSApp.isActive
+        )
+
+        switch action {
+        case .show:
+            requestShow()
+        case .hide:
+            hide()
         }
     }
 }

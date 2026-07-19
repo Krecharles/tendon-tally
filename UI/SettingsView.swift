@@ -32,7 +32,11 @@ struct SettingsView: View {
                         Divider()
                             .padding(.leading, 14)
 
-                        toggleRow(label: "Show in Dock", isOn: $showInDock) { newValue in
+                        toggleRow(
+                            label: "Show in Dock",
+                            description: "Also show TendonTally in the app switcher",
+                            isOn: $showInDock
+                        ) { newValue in
                             settingsManager.setShowInDock(newValue)
                         }
                     }
