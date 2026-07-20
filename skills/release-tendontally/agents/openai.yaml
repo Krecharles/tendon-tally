@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release TendonTally"
+  short_description: "Build and publish a TendonTally release"
+  default_prompt: "Use $release-tendontally to publish the next TendonTally version."
