@@ -59,6 +59,12 @@ private struct AppCommandMenu: Commands {
         ViewMenuCleanupCommands()
         WindowHelpCleanupCommands()
 
+        CommandGroup(replacing: .appInfo) {
+            Button("About TendonTally") {
+                selectDashboardTab(.about)
+            }
+        }
+
         CommandGroup(replacing: .appSettings) {
             Button("Settings...") {
                 selectDashboardTab(.settings)

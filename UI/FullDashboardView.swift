@@ -17,6 +17,7 @@ struct FullDashboardView: View {
         case settings
         case totalCalculation
         case permissions
+        case about
     }
 
     var body: some View {
@@ -40,6 +41,8 @@ struct FullDashboardView: View {
                     TotalCalculationTabView(viewModel: viewModel)
                 case .permissions:
                     PermissionsTabView(message: viewModel.permissionIssueMessage ?? "")
+                case .about:
+                    AboutTabView()
                 }
             }   
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -51,10 +54,7 @@ struct FullDashboardView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
-                Image("app-icon")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
+                AppIconView(size: 32)
                 Text("TendonTally")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.primary)
@@ -162,6 +162,17 @@ struct FullDashboardView: View {
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedTabRawValue = Tab.settings.rawValue
+                    }
+                }
+                .padding(.horizontal, 12)
+
+                SidebarButton(
+                    title: "About",
+                    icon: "info.circle.fill",
+                    isSelected: selectedTab == .about
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTabRawValue = Tab.about.rawValue
                     }
                 }
                 .padding(.horizontal, 12)

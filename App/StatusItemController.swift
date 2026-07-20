@@ -23,7 +23,7 @@ final class StatusItemController: NSObject {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
             // Use custom icon from asset catalog
-            if let customIcon = NSImage(named: "menubar-icon") {
+            if let customIcon = Bundle.appResources.image(forResource: NSImage.Name("menubar-icon")) {
                 customIcon.isTemplate = true // Makes it adapt to light/dark mode
                 button.image = customIcon
             } else {

@@ -71,10 +71,7 @@ struct BreakPillView: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack(spacing: 12) {
-                Image("app-icon")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                AppIconView(size: 22)
 
                 Text(phaseLabel)
                     .font(.system(size: 15, weight: .medium))

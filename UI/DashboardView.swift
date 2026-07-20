@@ -8,10 +8,7 @@ struct DashboardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                Image("app-icon")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                AppIconView(size: 22)
                 Text("TendonTally")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary)

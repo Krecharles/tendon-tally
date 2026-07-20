@@ -36,6 +36,7 @@ let package = Package(
                 "App/MainApp.swift",
                 "App/StatusItemController.swift",
                 "App/AppState.swift",
+                "App/Bundle+Resources.swift",
                 // Domain logic
                 "Domain/EventTapManager.swift",
                 "Domain/MetricsAggregator.swift",
@@ -68,12 +69,14 @@ let package = Package(
                 "UI/Components/SidebarButton.swift",
                 "UI/Components/MetricPill.swift",
                 "UI/Components/TotalWeightRow.swift",
+                "UI/Components/AppIconView.swift",
                 // UI - Tab views
                 "UI/Tabs/TodayTabView.swift",
                 "UI/Tabs/HistoryTabView.swift",
                 "UI/Tabs/TotalCalculationTabView.swift",
                 "UI/Tabs/BreaksTabView.swift",
                 "UI/Tabs/PermissionsTabView.swift",
+                "UI/Tabs/AboutTabView.swift",
                 // UI - Extensions
                 "UI/Extensions/MetricType+Color.swift"
             ],
