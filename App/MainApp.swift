@@ -247,11 +247,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if SettingsManager.shared.getShowInDock() {
-            DashboardWindowController.shared.requestShow()
-        } else {
-            DashboardWindowController.shared.toggle()
-        }
+        SettingsManager.shared.applySavedDockVisibility()
+        DashboardWindowController.shared.requestShow()
 
         if !flag {
             sanitizeMainMenu()
@@ -260,6 +257,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        SettingsManager.shared.applySavedDockVisibility()
         sanitizeMainMenu()
     }
 
@@ -296,15 +294,6 @@ extension NSApplication {
     }
 }
 
-enum DashboardToggleAction: Equatable {
-    case show
-    case hide
-
-    static func resolve(isDashboardVisible: Bool, isApplicationActive: Bool) -> Self {
-        isDashboardVisible && isApplicationActive ? .hide : .show
-    }
-}
-
 /// Owns full-dashboard visibility independently from the app's Dock activation policy.
 @MainActor
 final class DashboardWindowController {
@@ -328,27 +317,6 @@ final class DashboardWindowController {
                 }
                 window.makeKeyAndOrderFront(nil)
             }
-        }
-    }
-
-    func hide() {
-        NSApp.dashboardWindows.forEach { window in
-            window.orderOut(nil)
-        }
-        NSApp.hide(nil)
-    }
-
-    func toggle() {
-        let action = DashboardToggleAction.resolve(
-            isDashboardVisible: NSApp.dashboardWindows.contains(where: \.isVisible),
-            isApplicationActive: NSApp.isActive
-        )
-
-        switch action {
-        case .show:
-            requestShow()
-        case .hide:
-            hide()
         }
     }
 }
